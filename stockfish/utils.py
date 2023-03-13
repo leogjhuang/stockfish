@@ -38,8 +38,7 @@ def get_moving_average(trades, window_size):
     """
     Returns the moving average of the last window_size trades
     """
-    if len(trades) < window_size:
-        return None
+    window_size = min(len(trades), window_size)
     return sum(trade.price for trade in trades[-window_size:]) / window_size
 
 
@@ -47,7 +46,6 @@ def get_moving_std(trades, window_size):
     """
     Returns the moving standard deviation of the last window_size trades
     """
-    if len(trades) < window_size:
-        return None
+    window_size = min(len(trades), window_size)
     mean = get_moving_average(trades, window_size)
     return math.sqrt(sum((trade.price - mean) ** 2 for trade in trades[-window_size:]) / window_size)
