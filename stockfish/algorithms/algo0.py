@@ -5,7 +5,7 @@ from datamodel import OrderDepth, TradingState, Order
 Sample trading algorithm from Appendix A 
 Appendix A: Trader Class Example
 """
-class Trader:
+class Algo0:
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         """
