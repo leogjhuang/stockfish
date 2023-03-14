@@ -1,22 +1,27 @@
 import sys
 
 '''
-Used to update trade.py with the path containing the trading algorithm: 
-Sample command to run on the command line: 
-python3 bash.py ./algorithms/algo1.py
+Used to update trade.py with the path containing the trading algorithm followed by any helper files used: 
+Sample command to run on the command line if the algorithm is contained in ./algorithms/algo1.py: 
+python3 bash.py ./algorithms/algo1.py ./utils.py
 '''
 
 def main():
-    if len(sys.argv) != 2:
-        print('Please provide exactly one path (example: ./algorithms/algo0.py)')
+    if len(sys.argv) < 2:
+        print('Please provide at least one path (example: ./algorithms/algo0.py)')
         return
-    srcFile = sys.argv[1]
     destFile = './trader.py'
-    lines = filterSrcFile(srcFile)
-    if len(lines) == 0:
-        print('File ' + srcFile + ' has no class')
-        return
-    modifyDestFile(lines, destFile)
+    revertDestFile(destFile)
+    linesToAdd = []
+    for i in range(1, len(sys.argv)):
+        srcFile = sys.argv[i]
+        lines = filterSrcFile(srcFile)
+        if len(lines) == 0:
+            print('File ' + srcFile + ' has no class')
+        else:
+            linesToAdd += lines
+            linesToAdd.append('\n\n')
+    modifyDestFile(linesToAdd, destFile)
 
 def filterSrcFile(srcFile):
     lines = readLines(srcFile)
@@ -25,7 +30,6 @@ def filterSrcFile(srcFile):
     return lines
 
 def modifyDestFile(linesToAdd, destFile):
-    revertDestFile(destFile)
     lines = readLines(destFile)
     classLine = linesToAdd[0]
     className = getClassNameFromClass(classLine)
