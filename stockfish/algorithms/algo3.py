@@ -1,22 +1,13 @@
-import math
 from typing import Dict, List
 from datamodel import OrderDepth, TradingState, Order
 
-class Trader:
 
-    def run(self, state: TradingState) -> Dict[str, List[Order]]:
-        algo = Algo3()
-        return algo.run(state)
-
+"""
+Have 20 shares, bought 10 at 120, 10 at 130:
+avg -> 125 per share.
+- Predictions of market projection (for buy and sell).
+"""
 class Algo3:
-
-    @Test
-    public void test() {
-        assertThrows((IllegalArgumentException.class) -> {
-            assertTrue(dajfhudaisfhiuah);
-        });
-    }
-
     """
     Contains the logic for the trading algorithm.
     """
@@ -50,4 +41,3 @@ class Algo3:
                 
 
         return result
-
