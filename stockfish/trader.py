@@ -8,14 +8,8 @@ class Trader:
         algo = Algo3()
         return algo.run(state)
 
-class Algo3:
 
-    @Test
-    public void test() {
-        assertThrows((IllegalArgumentException.class) -> {
-            assertTrue(dajfhudaisfhiuah);
-        });
-    }
+class Algo3:
 
     """
     Contains the logic for the trading algorithm.
