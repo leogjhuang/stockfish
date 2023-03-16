@@ -7,6 +7,10 @@ python3 bash.py ./algorithms/algo1.py ./utils.py
 '''
 
 def main():
+    # formatStateToJSON()
+    compileToTrader()
+
+def compileToTrader():
     if len(sys.argv) < 2:
         print('Please provide at least one path (example: ./algorithms/algo0.py)')
         return
@@ -75,6 +79,16 @@ def write(lines, f):
         for line in lines:
             file.write(line)
 
+def formatStateToJSON():
+    filename = './analysis/tutorial/state.json'
+    lines = readLines(filename)
+    for i in range(len(lines)):
+        if lines[i].find('{') == 0:
+            lines[i] = lines[i].strip()
+            lines[i] += ',\n'
+    write(lines, filename)
+
 if __name__ == "__main__":
     main()
+  
 
