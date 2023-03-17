@@ -11,6 +11,8 @@ class Algo1:
     """
     Contains the logic for the trading algorithm.
     """
+    bids = set()
+    asks = set()
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         """
@@ -25,6 +27,12 @@ class Algo1:
 
             # Check if the current product is the 'PEARLS' product, only then run the order logic
             if product == 'PEARLS':
+                for bid in state.order_depths[product].buy_orders.keys():
+                    self.bids.add(bid)
+                for ask in state.order_depths[product].sell_orders.keys():
+                    self.asks.add(ask)
+                acceptable_bid_price = max(self.bids)
+                acceptable_ask_price = min(self.asks)
 
                 # Retrieve the Order Depth containing all the market BUY and SELL orders for PEARLS
                 order_depth: OrderDepth = state.order_depths[product]
@@ -34,7 +42,6 @@ class Algo1:
 
                 # Define a fair value for the PEARLS.
                 # Note that this value of 1 is just a dummy value, you should likely change it!
-                acceptable_price = 10000
 
                 # If statement checks if there are any SELL orders in the PEARLS market
                 if len(order_depth.sell_orders) > 0:
@@ -43,7 +50,7 @@ class Algo1:
                     # This variable is initialized to 20, and is decremented by the volume of each order
                     limit = 20 - state.position[product] if product in state.position else 20
                     # Go through every single sell order from lowest to acceptable_price - 1
-                    for best_ask in range(min(order_depth.sell_orders.keys()), acceptable_price):
+                    for best_ask in range(min(order_depth.sell_orders.keys()), acceptable_bid_price + 1):
                         # Check if the current price has any orders
                         if best_ask in order_depth.sell_orders:
                             # If there are orders, retrieve the volume
@@ -78,7 +85,7 @@ class Algo1:
                 if len(order_depth.buy_orders) != 0:
                     limit = state.position[product] + 20 if product in state.position else 20
                     # Go through every single buy order from highest to acceptable_price + 1
-                    for best_bid in range(max(order_depth.buy_orders.keys()), acceptable_price, -1):
+                    for best_bid in range(max(order_depth.buy_orders.keys()), acceptable_ask_price - 1, -1):
                         # Check if the current price has any orders
                         if best_bid in order_depth.buy_orders:
                             # If there are orders, retrieve the volume
