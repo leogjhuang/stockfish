@@ -1,10 +1,11 @@
-import trader
+from trader import Trader
+from sample.sample0 import state
 import datamodel
 
 
 def main():
-    traderBot = trader.Trader()
-    traderBot.run(datamodel.TradingState(0, {}, {}, {}, {}, {}, {}))
+    traderBot = Trader()
+    traderBot.run(state)
 
 if __name__ == "__main__":
     main()

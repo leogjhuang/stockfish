@@ -1,14 +1,10 @@
-import math
 from typing import Dict, List
 from datamodel import OrderDepth, TradingState, Order
 
-class Trader:
-
-    def run(self, state: TradingState) -> Dict[str, List[Order]]:
-        algo = Algo4()
-        return algo.run(state)
-
-
+"""
+Sample trading algorithm from Appendix A 
+Appendix A: Modified
+"""
 class Algo4:
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
@@ -73,6 +69,4 @@ class Algo4:
             if best_bid > acceptable_price:
                 print("SELL", str(best_bid_volume) + "x", best_bid)
                 orders.append(Order(product, best_bid, -best_bid_volume))
-
-
 
