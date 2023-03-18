@@ -2,8 +2,7 @@ from typing import Dict, List
 from datamodel import OrderDepth, TradingState, Order
 
 """
-Sample trading algorithm from Appendix A 
-Appendix A: Modified
+Sample trading for bananas with position values based on average.
 """
 class Algo4:
 

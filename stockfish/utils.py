@@ -49,3 +49,15 @@ class Util:
         window_size = min(len(trades), window_size)
         mean = self.get_moving_average(trades, window_size)
         return math.sqrt(sum((trade.price - mean) ** 2 for trade in trades[-window_size:]) / window_size)
+
+    def get_vwap(self, orders):
+        """
+        orders = order_depth.buy_orders or order_depth.sell_orders
+        """
+        weighted_sum = 0
+        quantity_sum = 0
+        for price in orders:
+            quantity = orders[price]
+            weighted_sum += price * quantity
+            quantity_sum += quantity
+        return weighted_sum / quantity_sum if quantity_sum != 0 else 0
