@@ -5,108 +5,34 @@ from datamodel import OrderDepth, TradingState, Order
 class Trader:
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
-        algo = Algo5()
+        algo = Algo6()
         return algo.run(state)
 
 
-class Algo5:
-
-    all_past_data = []
+class Algo6:
+    """
+    Trading a stable market.
+    Submit 40 buy orders at the lowest known ask price and 40 sell orders at the highest known bid price.
+    """
+    def __init__(self):
+        self.product = "PEARLS"
+        self.best_ask = 9998
+        self.best_bid = 10002
+        self.position_limit = 20
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
-        """
-        Only method required. It takes all buy and sell orders for all symbols as an input,
-        and outputs a list of orders to be sent
-        """
-        # Initialize the method output dict as an empty dict
         result = {}
-
-        # Iterate over all the keys (the available products) contained in the order depths
-        for product in state.order_depths.keys():
-
-            # Check if the current product is the 'PEARLS' product, only then run the order logic
-            if product == 'BANANAS':
-                    
-                # Retrieve the Order Depth containing all the market BUY and SELL orders for PEARLS
-                order_depth: OrderDepth = state.order_depths[product]
-
-                # Initialize the list of Orders to be sent as an empty list
-                orders: list[Order] = []
-                
-                buy_orders = order_depth.buy_orders
-                sell_orders = order_depth.sell_orders
-
-                self.append_orders(buy_orders, sell_orders)
-                
-                if state.timestamp == 1500:
-                    self.display_past_data(state)
-
-                if state.position.get(product, 0) > 0:
-                    self.sell(state, product, order_depth, orders)
-                else:
-                    self.buy(state, product, order_depth, orders)
-
-                # Add all the above orders to the result dict
-                result[product] = orders
-
-                # Return the dict of orders
-                # These possibly contain buy or sell orders for PEARLS
-                # Depending on the logic above
+        orders: list[Order] = []
+        position = state.position.get(self.product, 0)
+        Util.place_buy_order(self.product, orders, self.best_ask, self.position_limit - position)
+        Util.place_sell_order(self.product, orders, self.best_bid, self.position_limit + position)
+        result[self.product] = orders
         return result
-    
-    def append_orders(self, buy_orders, sell_orders):
-        self.all_past_data.append(Past(buy_orders, sell_orders))
 
-    def buy(self, state : TradingState, product : str, order_depth : OrderDepth, orders : list[Order]):
-        acceptable_price = 4940.944
-        # If statement checks if there are any SELL orders in the PEARLS market
-        if len(order_depth.sell_orders) > 0:
-
-            # Sort all the available sell orders by their price,
-            # and select only the sell order with the lowest price
-            best_ask = min(order_depth.sell_orders.keys())
-            best_ask_volume = max(order_depth.sell_orders[best_ask], state.position.get(product, 0) - 20)
-
-            # Check if the lowest ask (sell order) is lower than the above defined fair value
-            if best_ask < acceptable_price:
-
-                # In case the lowest ask is lower than our fair value,
-                # This presents an opportunity for us to buy cheaply
-                # The code below therefore sends a BUY order at the price level of the ask,
-                # with the same quantity
-                # We expect this order to trade with the sell order
-                print("BUY", str(-best_ask_volume) + "x", best_ask)
-                orders.append(Order(product, best_ask, -best_ask_volume))
-
-    def sell(self, state : TradingState, product : str, order_depth : OrderDepth, orders : list[Order]):
-        acceptable_price = 4935.635
-        if len(order_depth.buy_orders) != 0:
-            best_bid = max(order_depth.buy_orders.keys())
-            best_bid_volume = min(order_depth.buy_orders[best_bid], state.position.get(product, 0) + 20) # minus -20
-            if best_bid > acceptable_price:
-                print("SELL", str(best_bid_volume) + "x", best_bid)
-                orders.append(Order(product, best_bid, -best_bid_volume))
-
-    def display_past_data(self, state : TradingState):
-        for data in self.all_past_data:
-            data : Past = data
-            print(state.timestamp)
-            print(data.buy_orders)
-            print(data.sell_orders)
-            print(data.vwap_buy)
-            print(data.vwap_sell)
-            print('End timestamp')
-
-class Past:
-    def __init__(self, buy_orders, sell_orders):
-        util = Util()
-        self.buy_orders = buy_orders
-        self.sell_orders = sell_orders
-        self.vwap_buy = util.get_vwap(buy_orders)
-        self.vwap_sell = util.get_vwap(sell_orders)
 
 class Util:
-    def get_best_bid(self, order_depth):
+    @staticmethod
+    def get_best_bid(order_depth):
         """
         Returns the best bid and its volume
         """
@@ -117,7 +43,8 @@ class Util:
         return best_bid, best_bid_volume
 
 
-    def get_best_ask(self, order_depth):
+    @staticmethod
+    def get_best_ask(order_depth):
         """
         Returns the best ask and its volume
         """
@@ -128,18 +55,20 @@ class Util:
         return best_ask, best_ask_volume
 
 
-    def get_mid_price(self, order_depth):
+    @staticmethod
+    def get_mid_price(order_depth):
         """
         Returns the mid price
         """
-        best_bid, _ = self.get_best_bid(order_depth)
-        best_ask, _ = self.get_best_ask(order_depth)
+        best_bid, _ = Util.get_best_bid(order_depth)
+        best_ask, _ = Util.get_best_ask(order_depth)
         if best_bid is None or best_ask is None:
             return None
         return (best_bid + best_ask) / 2
 
 
-    def get_moving_average(self, trades, window_size):
+    @staticmethod
+    def get_moving_average(trades, window_size):
         """
         Returns the moving average of the last window_size trades
         """
@@ -147,15 +76,18 @@ class Util:
         return sum(trade.price for trade in trades[-window_size:]) / window_size
 
 
-    def get_moving_std(self, trades, window_size):
+    @staticmethod
+    def get_moving_std(trades, window_size):
         """
         Returns the moving standard deviation of the last window_size trades
         """
         window_size = min(len(trades), window_size)
-        mean = self.get_moving_average(trades, window_size)
+        mean = Util.get_moving_average(trades, window_size)
         return math.sqrt(sum((trade.price - mean) ** 2 for trade in trades[-window_size:]) / window_size)
 
-    def get_vwap(self, orders):
+
+    @staticmethod
+    def get_vwap(orders):
         """
         orders = order_depth.buy_orders or order_depth.sell_orders
         """
@@ -166,4 +98,25 @@ class Util:
             weighted_sum += price * quantity
             quantity_sum += quantity
         return weighted_sum / quantity_sum if quantity_sum != 0 else 0
+
+
+    @staticmethod
+    def place_buy_order(product, orders, price, quantity):
+        """
+        Places a buy order
+        """
+        quantity = abs(quantity)
+        print("BUY", str(quantity) + "x", price)
+        orders.append(Order(product, price, quantity))
+
+
+    @staticmethod
+    def place_sell_order(product, orders, price, quantity):
+        """
+        Places a sell order
+        """
+        quantity = abs(quantity)
+        print("SELL", str(quantity) + "x", price)
+        orders.append(Order(product, price, -quantity))
+
 
