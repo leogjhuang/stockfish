@@ -1,6 +1,6 @@
 from typing import Dict, List
 from datamodel import Order, TradingState
-from utils import *
+from stockfish.utils import place_buy_order, place_sell_order
 
 
 class Algo6:

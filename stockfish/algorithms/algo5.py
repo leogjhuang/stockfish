@@ -1,13 +1,13 @@
 from typing import Dict, List
 from datamodel import OrderDepth, TradingState, Order
-from utils import *
+from stockfish.utils import get_vwap
 
-"""
-Bananas trading.
-Experimenting with keeping track of past bid and ask prices.
-"""
+
 class Algo5:
-
+    """
+    Bananas trading.
+    Experimenting with keeping track of past bid and ask prices.
+    """
     all_past_data = []
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
@@ -23,18 +23,18 @@ class Algo5:
 
             # Check if the current product is the 'PEARLS' product, only then run the order logic
             if product == 'BANANAS':
-                    
+
                 # Retrieve the Order Depth containing all the market BUY and SELL orders for PEARLS
                 order_depth: OrderDepth = state.order_depths[product]
 
                 # Initialize the list of Orders to be sent as an empty list
                 orders: list[Order] = []
-                
+
                 buy_orders = order_depth.buy_orders
                 sell_orders = order_depth.sell_orders
 
                 self.append_orders(buy_orders, sell_orders)
-                
+
                 if state.timestamp == 1500:
                     self.display_past_data(state)
 
@@ -50,7 +50,7 @@ class Algo5:
                 # These possibly contain buy or sell orders for PEARLS
                 # Depending on the logic above
         return result
-    
+
     def append_orders(self, buy_orders, sell_orders):
         self.all_past_data.append(Past(buy_orders, sell_orders))
 
