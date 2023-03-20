@@ -9,50 +9,50 @@ def makeOrderDepth(buy_orders, sell_orders):
 timestamp = 1000
 
 listings = {
-	"PRODUCT1": Listing(
-		symbol="PRODUCT1", 
-		product="PRODUCT1", 
+	"PEARLS": Listing(
+		symbol="PEARLS",
+		product="PEARLS",
 		denomination="SEASHELLS"
 	),
-	"PRODUCT2": Listing(
-		symbol="PRODUCT2", 
-		product="PRODUCT2", 
+	"BANANAS": Listing(
+		symbol="BANANAS",
+		product="BANANAS",
 		denomination="SEASHELLS"
 	),
 }
 
 order_depths = {
-	"PRODUCT1": makeOrderDepth(
+	"PEARLS": makeOrderDepth(
 		buy_orders={10: 7, 9: 5},
 		sell_orders={11: -4, 12: -8}
 	),
-	"PRODUCT2": makeOrderDepth(
+	"BANANAS": makeOrderDepth(
 		buy_orders={142: 3, 141: 5},
 		sell_orders={144: -5, 145: -8}
-	),	
+	),
 }
 
 own_trades = {
-	"PRODUCT1": [],
-	"PRODUCT2": []
+	"PEARLS": [],
+	"BANANAS": []
 }
 
 market_trades = {
-	"PRODUCT1": [
+	"PEARLS": [
 		Trade(
-			symbol="PRODUCT1",
+			symbol="PEARLS",
 			price=11,
 			quantity=4,
 			buyer="",
 			seller="",
 		)
 	],
-	"PRODUCT2": []
+	"BANANAS": []
 }
 
 position = {
-	"PRODUCT1": 3,
-	"PRODUCT2": -5
+	"PEARLS": 3,
+	"BANANAS": -5
 }
 
 observations = {}
