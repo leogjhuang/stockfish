@@ -1,7 +1,7 @@
 """
 Utility functions for algorithms
 """
-from math import sqrt
+import math
 from datamodel import Order
 
 
@@ -63,7 +63,7 @@ def get_moving_std(trades, window_size):
     """
     window_size = min(len(trades), window_size)
     mean = get_moving_average(trades, window_size)
-    return sqrt(sum((trade.price - mean) ** 2 for trade in trades[-window_size:]) / window_size)
+    return math.sqrt(sum((trade.price - mean) ** 2 for trade in trades[-window_size:]) / window_size)
 
 
 def get_vwap(orders):

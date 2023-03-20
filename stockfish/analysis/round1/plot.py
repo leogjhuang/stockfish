@@ -3,6 +3,8 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
+day_number_is_one_filename = 'day_one.png'
+day_number_is_not_one_filename = 'day_n.png'
 
 def sigmoid(x):
   return 1 / (1 + math.exp(-x))
@@ -49,7 +51,7 @@ def plot_graph(data_dict):
                 axs[product_count].grid(True)
                 day_count += 1
             product_count += 1
-        plt.show()
+        pltSaveFig(day_number_is_one_filename)
     else:
         for product in data_by_day:
             day_count = 0
@@ -70,24 +72,44 @@ def plot_graph(data_dict):
                 axs[product_count, day_count].grid(True)
                 day_count += 1
             product_count += 1
-        plt.show()
+        pltSaveFig(day_number_is_not_one_filename)
 
+def pltSaveFig(filename):
+    # plt.show()
+    plt.savefig(filename)
 
+def main():
+    plotData()
+    # test()
 
+def plotData():
+    day0 = pd.read_csv(r'prices_round_1_day_0.csv', sep=";")
+    day1 = pd.read_csv(r'prices_round_1_day_-1.csv', sep=";")
+    day2 = pd.read_csv(r'prices_round_1_day_-2.csv', sep=";")
 
-day0 = pd.read_csv(r'prices_round_1_day_0.csv', sep=";")
-day1 = pd.read_csv(r'prices_round_1_day_-1.csv', sep=";")
-day2 = pd.read_csv(r'prices_round_1_day_-2.csv', sep=";")
+    frames = [day0, day1, day2]
 
-frames = [day0, day1, day2]
+    df = pd.concat(frames)
 
-df = pd.concat(frames)
+    pearldata = df[df['product'] == "PEARLS"].drop(axis=1, columns=["product", "mid_price", "profit_and_loss"]).fillna(axis=0, method="ffill").fillna(axis=0, method="bfill")
+    bananadata = df[df['product'] == "BANANAS"].drop(axis=1, columns=["product", "mid_price", "profit_and_loss"]).fillna(axis=0, method="ffill").fillna(axis=0, method="bfill")
 
-pearldata = df[df['product'] == "PEARLS"].drop(axis=1, columns=["product", "mid_price", "profit_and_loss"]).fillna(axis=0, method="ffill").fillna(axis=0, method="bfill")
-bananadata = df[df['product'] == "BANANAS"].drop(axis=1, columns=["product", "mid_price", "profit_and_loss"]).fillna(axis=0, method="ffill").fillna(axis=0, method="bfill")
+    plt.style.use('classic')
 
-plt.style.use('classic')
+    data_dict = {"BANANAS": bananadata, "PEARLS": pearldata}
 
-data_dict = {"BANANAS": bananadata, "PEARLS": pearldata}
+    plot_graph(data_dict)
 
-plot_graph(data_dict)
+def test():
+    testReadCSV()
+
+def testReadCSV():
+    day0 = pd.read_csv(r'prices_round_1_day_0.csv', sep=";")
+    day1 = pd.read_csv(r'prices_round_1_day_-1.csv', sep=";")
+    day2 = pd.read_csv(r'prices_round_1_day_-2.csv', sep=";")
+    print(day0)
+    print(day1)
+    print(day2)
+
+if __name__ == '__main__':
+    main()
