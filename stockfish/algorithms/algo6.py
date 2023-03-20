@@ -1,6 +1,6 @@
 from typing import Dict, List
 from datamodel import Order, TradingState
-from utils import Util
+from utils import *
 
 
 class Algo6:
@@ -18,7 +18,7 @@ class Algo6:
         result = {}
         orders: list[Order] = []
         position = state.position.get(self.product, 0)
-        Util.place_buy_order(self.product, orders, self.best_ask, self.position_limit - position)
-        Util.place_sell_order(self.product, orders, self.best_bid, self.position_limit + position)
+        place_buy_order(self.product, orders, self.best_ask, self.position_limit - position)
+        place_sell_order(self.product, orders, self.best_bid, self.position_limit + position)
         result[self.product] = orders
         return result

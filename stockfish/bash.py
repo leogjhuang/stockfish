@@ -3,7 +3,7 @@ import sys
 '''
 Used to update trade.py with the path containing the trading algorithm followed by any helper files used: 
 Sample command to run on the command line if the algorithm is contained in ./algorithms/algo1.py: 
-python3 bash.py ./algorithms/algo1.py ./utils.py
+python3 bash.py ./algorithms/algo1.py
 '''
 
 def main():
@@ -33,23 +33,28 @@ def filterSrcFile(srcFile):
         lines.pop(0)
     return lines
 
+def getUtilFunctions():
+    utilsFile = './utils.py'
+    lines = readLines(utilsFile)
+    while len(lines) > 0 and not isPythonFunction(lines[0]):
+        lines.pop(0)
+    return lines
+
+def isPythonFunction(line):
+    return line.find('def') == 0
+
 def modifyDestFile(linesToAdd, destFile):
     lines = readLines(destFile)
-    classLine = linesToAdd[0]
-    className = getClassNameFromClass(classLine)
-    updateClassInstantiation(lines, className)
-    lines += linesToAdd
+    renameClassToTrader(linesToAdd)
+    lines += linesToAdd + getUtilFunctions()
     write(lines, destFile)
 
 def revertDestFile(destFile):
     lines = readLines(destFile)
-    seenClass = False
     keep = []
     for line in lines:
         if isClassDeclaration(line):
-            if seenClass:
-                break
-            seenClass = True
+            break
         keep.append(line)
     write(keep, destFile)
 
@@ -62,6 +67,14 @@ def updateClassInstantiation(lines, className):
             nextLine = lines[i + 1]
             currentClassName = getClassNameFromInstance(nextLine)
             lines[i + 1] = lines[i + 1].replace(currentClassName, className, 1)
+            return
+
+def renameClassToTrader(lines):
+    newClass = 'Trader'
+    for i in range(len(lines)):
+        if isClassDeclaration(lines[i]):
+            oldClass = getClassNameFromClass(lines[i])
+            lines[i] = lines[i].replace(oldClass, newClass, 1)
             return
 
 def getClassNameFromClass(classLine):

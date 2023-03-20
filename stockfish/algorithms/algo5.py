@@ -1,6 +1,6 @@
 from typing import Dict, List
 from datamodel import OrderDepth, TradingState, Order
-from utils import Util
+from utils import *
 
 """
 Bananas trading.
@@ -96,9 +96,8 @@ class Algo5:
 
 class Past:
     def __init__(self, buy_orders, sell_orders):
-        util = Util()
         self.buy_orders = buy_orders
         self.sell_orders = sell_orders
-        self.vwap_buy = util.get_vwap(buy_orders)
-        self.vwap_sell = util.get_vwap(sell_orders)
+        self.vwap_buy = get_vwap(buy_orders)
+        self.vwap_sell = get_vwap(sell_orders)
         # self.trades = None
