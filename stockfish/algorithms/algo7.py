@@ -40,6 +40,8 @@ class Algo7:
                     place_buy_order(product, orders, self.ask_price[product], buy_volume)
                     place_sell_order(product, orders, self.bid_price[product], sell_volume)
             elif product == "BANANAS":
+                best_ask_volume = min(-best_ask_volume, buy_volume)
+                best_bid_volume = min(best_bid_volume, sell_volume)
                 if product not in self.prices:
                     self.prices[product] = []
                 self.prices[product].append(get_mid_price(order_depth))
