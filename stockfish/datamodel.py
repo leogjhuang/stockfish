@@ -1,3 +1,7 @@
+"""
+TradingState model from Appendix B
+"""
+
 import json
 from typing import Dict, List
 from json import JSONEncoder
@@ -37,18 +41,13 @@ class OrderDepth:
 
 
 class Trade:
-    def __init__(self, symbol: Symbol, price: int, quantity: int, buyer: UserId = "", seller: UserId = "") -> None:
+    def __init__(self, symbol: Symbol, price: int, quantity: int, buyer: UserId = None, seller: UserId = None, timestamp: int = 0) -> None:
         self.symbol = symbol
         self.price: int = price
         self.quantity: int = quantity
         self.buyer = buyer
         self.seller = seller
-
-    def __str__(self) -> str:
-        return "(" + self.symbol + ", " + self.buyer + " << " + self.seller + ", " + str(self.price) + ", " + str(self.quantity) + ")"
-
-    def __repr__(self) -> str:
-        return "(" + self.symbol + ", " + self.buyer + " << " + self.seller + ", " + str(self.price) + ", " + str(self.quantity) + ")"
+        self.timestamp = timestamp
 
 
 class TradingState(object):
@@ -70,6 +69,7 @@ class TradingState(object):
 
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True)
+
 
 class ProsperityEncoder(JSONEncoder):
         def default(self, o):

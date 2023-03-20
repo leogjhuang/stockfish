@@ -1,10 +1,11 @@
+"""
+Trader class example from Appendix A
+"""
+
 from typing import Dict, List
 from datamodel import OrderDepth, TradingState, Order
 
-"""
-Sample trading algorithm from Appendix A 
-Appendix A: Trader Class Example
-"""
+
 class Algo0:
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
