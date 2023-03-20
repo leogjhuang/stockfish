@@ -47,9 +47,9 @@ class Algo2:
             # Go through every single sell order from lowest to acceptable_price - 1
             for best_ask in range(min(orders.keys()), acceptable_price):
                 # Check if the current price has any orders
-                if best_ask in acceptable_price:
+                if best_ask in orders:
                     # If there are orders, retrieve the volume
-                    best_ask_volume = min(-acceptable_price[best_ask], limit)
+                    best_ask_volume = min(orders[best_ask], limit)
                     # Send a BUY order at the price level of the ask, with the same quantity
                     self.display_buy(best_ask_volume, best_ask)
                     all_orders.append(Order(product, best_ask, best_ask_volume))
@@ -73,10 +73,10 @@ class Algo2:
                     limit -= best_bid_volume
                     if limit <= 0:
                         break
-    
+
     def display_buy(self, best_volume: int, best_ask_or_bid: int):
         self.display_buy_or_sell("BUY", best_volume, best_ask_or_bid)
-    
+
     def display_sell(self, best_volume: int, best_ask_or_bid: int):
         self.display_buy_or_sell("SELL", best_volume, best_ask_or_bid)
 
