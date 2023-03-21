@@ -17,11 +17,17 @@ class Graph:
         if count + 1 == max_count:
             for v, w in self.edges[u]:
                 if v == SHELLS:
-                    return w
+                    return w, [v]
         profit = 0
+        big_stack = []
         for v, w in self.edges[u]:
-            profit = max(profit, w * self.dfs(v, count + 1))
-        return profit
+            res, stack = self.dfs(v, count + 1)
+            res *= w
+            if profit < res:
+                profit = res
+                big_stack = stack
+                big_stack = [v] + big_stack
+        return profit, big_stack
 
     def bfs(self, u, count, profit=1.0, max_count=5):
         queue = []
@@ -40,4 +46,4 @@ graph.add_edge(SHELLS, PIZZA, 1.34, 0.75)
 graph.add_edge(SNOWBALL, WASABI, 0.31, 3.1)
 graph.add_edge(SNOWBALL, PIZZA, 0.67, 1.45)
 graph.add_edge(WASABI, PIZZA, 1.95, 0.5)
-print(graph.dfs(SHELLS, 0))
+print(graph.dfs(SHELLS, 0)[1])
