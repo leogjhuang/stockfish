@@ -9,7 +9,7 @@ from stockfish.utils import place_buy_order, place_sell_order, get_best_ask, get
 
 class Algo7:
     """
-    Trading a trending market.
+    Trading a stable and trending market respectively.
     Monitor changes in the bid/ask prices and place limit orders accordingly.
     """
     def __init__(self):
