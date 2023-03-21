@@ -13,13 +13,12 @@ class Graph:
         self.edges[u].append((v, w))
         self.edges[v].append((u, x))
 
-    def dfs(self, u, count, profit=1.0, max_count=5):
-        if count == max_count:
-            return profit
+    def dfs(self, u, count, max_count=5):
         if count + 1 == max_count:
             for v, w in self.edges[u]:
                 if v == SHELLS:
-                    return profit * w
+                    return w
+        profit = 0
         for v, w in self.edges[u]:
             profit = max(profit, w * self.dfs(v, count + 1))
         return profit
@@ -31,6 +30,10 @@ class Graph:
 
 
 graph = Graph(4)
+graph.add_edge(SHELLS, SHELLS, 1.00, 1.00)
+graph.add_edge(SNOWBALL, SNOWBALL, 1.00, 1.00)
+graph.add_edge(WASABI, WASABI, 1.00, 1.00)
+graph.add_edge(PIZZA, PIZZA, 1.00, 1.00)
 graph.add_edge(SHELLS, SNOWBALL, 1.98, 0.48)
 graph.add_edge(SHELLS, WASABI, 0.64, 1.49)
 graph.add_edge(SHELLS, PIZZA, 1.34, 0.75)
