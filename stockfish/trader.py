@@ -30,15 +30,15 @@ class Trader:
             sell_volume = self.position_limit.get(product, 0) + position
 
             if product == "PEARLS":
-                if len(order_depth.sell_orders) > 0:
-                    best_ask = get_best_ask(order_depth)[0]
-                    self.global_best_ask[product] = min(self.global_best_ask.get(product, best_ask), best_ask)
-                if len(order_depth.buy_orders) > 0:
-                    best_bid = get_best_bid(order_depth)[0]
-                    self.global_best_bid[product] = max(self.global_best_bid.get(product, best_bid), best_bid)
-                if product in self.global_best_ask and product in self.global_best_bid and self.global_best_ask[product] < self.global_best_bid[product]:
-                    place_buy_order(product, orders, self.global_best_ask[product], buy_volume)
-                    place_sell_order(product, orders, self.global_best_bid[product], sell_volume)
+                if product not in self.mid_prices:
+                    self.mid_prices[product] = []
+                if get_mid_price(order_depth) is not None:
+                    self.mid_prices[product].append(get_mid_price(order_depth))
+                if len(self.mid_prices[product]) > 0 and len(order_depth.sell_orders) > 0 and len(order_depth.buy_orders) > 0:
+                    acceptable_price = get_moving_average(self.mid_prices[product], 5)
+                    spread = get_spread(order_depth)
+                    place_buy_order(product, orders, math.ceil(acceptable_price - spread / 2.5), buy_volume)
+                    place_sell_order(product, orders, math.floor(acceptable_price + spread / 2.5), sell_volume)
 
             if product == "BANANAS":
                 if product not in self.mid_prices:
