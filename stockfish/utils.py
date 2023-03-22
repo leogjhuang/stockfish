@@ -93,14 +93,25 @@ def place_buy_orders_up_to(product, orders, quantity, order_depth):
     Places buy orders up to a given quantity
     """
     quantity = abs(quantity)
-    for best_ask, best_ask_volume in dict(sorted(order_depth.sell_orders.items())):
-        best_ask_volume = abs(best_ask_volume)
-        quantity = min(quantity, best_ask_volume)
-        print("BUY", str(quantity) + "x", best_ask)
-        orders.append(Order(product, best_ask, quantity))
-        quantity -= best_ask_volume
-        if quantity <= 0:
-            return
+    start = min(order_depth.sell_orders.keys())
+    finish = max(order_depth.sell_orders.keys())
+    for price in range(start, finish + 1):
+        if price in order_depth.sell_orders:
+            best_ask_volume = abs(order_depth.sell_orders[price])
+            quantity = min(quantity, best_ask_volume)
+            place_buy_order(product, orders, price, quantity)
+            quantity -= best_ask_volume
+            if quantity <= 0:
+                return
+    
+    # for best_ask, best_ask_volume in dict(sorted(order_depth.sell_orders.items())):
+    #     best_ask_volume = abs(best_ask_volume)
+    #     quantity = min(quantity, best_ask_volume)
+    #     print("BUY", str(quantity) + "x", best_ask)
+    #     orders.append(Order(product, best_ask, quantity))
+    #     quantity -= best_ask_volume
+    #     if quantity <= 0:
+    #         return
 
 
 def place_sell_order(product, orders, price, quantity):
@@ -117,11 +128,23 @@ def place_sell_orders_up_to(product, orders, quantity, order_depth):
     Places sell orders up to a given quantity
     """
     quantity = abs(quantity)
-    for best_bid, best_bid_volume in dict(sorted(order_depth.buy_orders.items(), reverse=True)):
-        best_bid_volume = abs(best_bid_volume)
-        quantity = min(quantity, best_bid_volume)
-        print("SELL", str(quantity) + "x", best_bid)
-        orders.append(Order(product, best_bid, -quantity))
-        quantity -= best_bid_volume
-        if quantity <= 0:
-            return
+    start = max(order_depth.buy_orders.keys())
+    finish = min(order_depth.buy_orders.keys())
+    for price in range(start, finish - 1, -1):
+        if price in order_depth.buy_orders:
+            best_bid_volume = abs(order_depth.buy_orders[price])
+            quantity = min(quantity, best_bid_volume)
+            place_sell_order(product, orders, price, quantity)
+            quantity -= best_bid_volume
+            if quantity <= 0:
+                return
+
+    # quantity = abs(quantity)
+    # for best_bid, best_bid_volume in dict(sorted(order_depth.buy_orders.items(), reverse=True)):
+    #     best_bid_volume = abs(best_bid_volume)
+    #     quantity = min(quantity, best_bid_volume)
+    #     print("SELL", str(quantity) + "x", best_bid)
+    #     orders.append(Order(product, best_bid, -quantity))
+    #     quantity -= best_bid_volume
+    #     if quantity <= 0:
+    #         return
