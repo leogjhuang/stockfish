@@ -5,78 +5,32 @@ from datamodel import OrderDepth, TradingState, Order, ProsperityEncoder, Symbol
 
 class Trader:
     """
-    Algo7 but gets moving average of VWAP rather than mid price of best ask and bid prices.
-    Monitor changes in the bid/ask prices and place limit orders accordingly.
+    Trading a stable market.
+    Submit 40 buy orders at the lowest known ask price and 40 sell orders at the highest known bid price.
     """
     def __init__(self):
-        self.position_limit = {"PEARLS": 20, "BANANAS": 20}
-        self.ask_price = {}
-        self.bid_price = {}
-        self.vwap_bid_prices = {}
-        self.vwap_ask_prices = {}
-        self.acceptable_ask_price = {}
-        self.acceptable_bid_price = {}
+        self.product = "PEARLS"
+        self.best_ask = 9998
+        self.mid_price = 10000
+        self.best_bid = 10002
+        self.position_limit = 20
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
-        """"
-        Main entry point for the algorithm
-        """
         result = {}
-
-        for product, order_depth in state.order_depths.items():
-            orders: list[Order] = []
-            position = state.position.get(product, 0)
-            position_limit = self.position_limit.get(product, 0)
-            buy_volume = position_limit - position
-            sell_volume = position_limit + position
-            best_ask, best_ask_volume = get_best_ask(order_depth)
-            best_bid, best_bid_volume = get_best_bid(order_depth)
-            best_ask_volume = min(-best_ask_volume, buy_volume)
-            best_bid_volume = min(best_bid_volume, sell_volume)
-            self.ask_price[product] = min(self.ask_price.get(product, best_ask), best_ask)
-            self.bid_price[product] = max(self.bid_price.get(product, best_bid), best_bid)
-
-            if product == "PEARLS":
-                if self.ask_price[product] < self.bid_price[product]:
-                    place_buy_order(product, orders, self.ask_price[product], buy_volume)
-                    place_sell_order(product, orders, self.bid_price[product], sell_volume)
-            elif product == "BANANAS":
-                self.order_by_vwap(
-                    product=product,
-                    prices=self.vwap_bid_prices,
-                    acceptable_price=self.acceptable_bid_price,
-                    book=order_depth.buy_orders,
-                    window_size=5,
-                    order_condition=lambda : best_bid > self.acceptable_bid_price[product],
-                    place_order_function=lambda : place_sell_order(product, orders, best_bid, best_bid_volume)
-                )
-
-                self.order_by_vwap(
-                    product=product,
-                    prices=self.vwap_ask_prices,
-                    acceptable_price=self.acceptable_ask_price,
-                    book=order_depth.sell_orders,
-                    window_size=5,
-                    order_condition=lambda : best_ask < self.acceptable_ask_price[product],
-                    place_order_function=lambda : place_buy_order(product, orders, best_ask, best_ask_volume)
-                )
-
-            result[product] = orders
-
+        orders: list[Order] = []
+        position = state.position.get(self.product, 0)
+        order_depth = state.order_depths[self.product]
+        if position < -10:
+            place_buy_orders_up_to(self.product, orders, -position, order_depth)
+        else:
+            place_buy_order(self.product, orders, self.best_ask, self.position_limit - position)
+        if position > 10:
+            place_sell_orders_up_to(self.product, orders, position, order_depth)
+        else:
+            place_sell_order(self.product, orders, self.best_bid, self.position_limit + position)
+        result[self.product] = orders
         logger.flush(state, orders)
         return result
-
-    def order_by_vwap(self, product, prices, 
-                      acceptable_price, book, 
-                      window_size, order_condition, 
-                      place_order_function):
-        if product not in prices:
-            prices[product] = []
-        prices[product].append(get_vwap(book))
-        acceptable_price[product] = get_moving_average(prices[product], window_size)
-        if order_condition():
-            place_order_function()
-    
 
 
 class Logger:
@@ -181,6 +135,21 @@ def place_buy_order(product, orders, price, quantity):
     orders.append(Order(product, price, quantity))
 
 
+def place_buy_orders_up_to(product, orders, quantity, order_depth):
+    """
+    Places buy orders up to a given quantity
+    """
+    quantity = abs(quantity)
+    for best_ask, best_ask_volume in dict(sorted(order_depth.sell_orders.items())):
+        best_ask_volume = abs(best_ask_volume)
+        quantity = min(quantity, best_ask_volume)
+        print("BUY", str(quantity) + "x", best_ask)
+        orders.append(Order(product, best_ask, quantity))
+        quantity -= best_ask_volume
+        if quantity <= 0:
+            return
+
+
 def place_sell_order(product, orders, price, quantity):
     """
     Places a sell order
@@ -188,3 +157,18 @@ def place_sell_order(product, orders, price, quantity):
     quantity = abs(quantity)
     print("SELL", str(quantity) + "x", price)
     orders.append(Order(product, price, -quantity))
+
+
+def place_sell_orders_up_to(product, orders, quantity, order_depth):
+    """
+    Places sell orders up to a given quantity
+    """
+    quantity = abs(quantity)
+    for best_bid, best_bid_volume in dict(sorted(order_depth.buy_orders.items(), reverse=True)):
+        best_bid_volume = abs(best_bid_volume)
+        quantity = min(quantity, best_bid_volume)
+        print("SELL", str(quantity) + "x", best_bid)
+        orders.append(Order(product, best_bid, -quantity))
+        quantity -= best_bid_volume
+        if quantity <= 0:
+            return
