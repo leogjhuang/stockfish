@@ -7,7 +7,7 @@ from datamodel import Order, TradingState
 from stockfish.utils import *
 
 
-class Algo8:
+class Algo9:
     """
     Trading a stable and trending market respectively by comparing two different moving averages.
     Monitor changes in the bid/ask prices and place limit orders accordingly.
