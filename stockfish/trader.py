@@ -20,6 +20,7 @@ class Trader:
         self.bid_price = {}
         self.vwap_bid_prices = {}
         self.vwap_ask_prices = {}
+        self.mid_prices = {}
 
         # moving average data
         self.large_ask_averages = {}
@@ -66,12 +67,16 @@ class Trader:
 
             else:
                 test_threshold = 5
-                best_ask, best_ask_volume = get_best_ask(order_depth)
-                best_bid, best_bid_volume = get_best_bid(order_depth)
-                best_ask_volume = min(-best_ask_volume, buy_volume, test_threshold)
-                best_bid_volume = min(best_bid_volume, sell_volume, test_threshold)
-                self.ask_price[product] = min(self.ask_price.get(product, best_ask), best_ask)
-                self.bid_price[product] = max(self.bid_price.get(product, best_bid), best_bid)
+                # best_ask, best_ask_volume = get_best_ask(order_depth)
+                # best_bid, best_bid_volume = get_best_bid(order_depth)
+                # best_ask_volume = min(-best_ask_volume, buy_volume)
+                # best_bid_volume = min(best_bid_volume, sell_volume)
+                # self.ask_price[product] = min(self.ask_price.get(product, best_ask), best_ask)
+                # self.bid_price[product] = max(self.bid_price.get(product, best_bid), best_bid)
+                self.init_list(product, self.mid_prices)
+                self.mid_prices[product].append(get_mid_price(order_depth))
+                acceptable_price = get_moving_average(self.mid_prices[product], test_threshold)
+                spread = get_spread(order_depth)
 
                 self.order_by_vwap(
                     product=product,
@@ -80,7 +85,7 @@ class Trader:
                     small_averages=self.small_bid_averages,
                     book=order_depth.buy_orders,
                     order_condition=lambda : self.sell_signal(product),
-                    place_order_function=lambda : place_sell_order(product, orders, best_bid, best_bid_volume)
+                    place_order_function=lambda : place_sell_order(product, orders, math.floor(acceptable_price + spread / 2), sell_volume)
                 )
 
                 self.order_by_vwap(
@@ -90,7 +95,7 @@ class Trader:
                     small_averages=self.small_ask_averages,
                     book=order_depth.sell_orders,
                     order_condition=lambda : self.buy_signal(product),
-                    place_order_function=lambda : place_buy_order(product, orders, best_ask, best_ask_volume)
+                    place_order_function=lambda : place_buy_order(product, orders, math.ceil(acceptable_price - spread / 2), buy_volume)
                 )
 
             result[product] = orders
@@ -119,14 +124,14 @@ class Trader:
         cur_roc_small = small_averages[-1]
         past_roc_large = large_averages[-2]
         past_roc_small = small_averages[-2]
-        return cur_roc_large, cur_roc_small, past_roc_large, past_roc_small  
+        return cur_roc_large, cur_roc_small, past_roc_large, past_roc_small
 
     def get_roc_data(self, large_averages, small_averages):
         cur_roc_large = self.get_average_roc(large_averages)
         cur_roc_small = self.get_average_roc(small_averages)
         past_roc_large = self.get_average_roc(large_averages[:-1])
         past_roc_small = self.get_average_roc(small_averages[:-1])
-        return cur_roc_large, cur_roc_small, past_roc_large, past_roc_small 
+        return cur_roc_large, cur_roc_small, past_roc_large, past_roc_small
 
     def get_average_roc(self, data):
         roc = []
@@ -137,11 +142,11 @@ class Trader:
             roc.append(rate)
         return sum(roc) / len(roc)
 
-    def order_by_vwap(self, product, prices, 
-                      large_averages, 
-                      small_averages, 
-                      book, 
-                      order_condition, 
+    def order_by_vwap(self, product, prices,
+                      large_averages,
+                      small_averages,
+                      book,
+                      order_condition,
                       place_order_function):
         self.init_list(product, prices)
         self.init_list(product, large_averages)
@@ -157,11 +162,9 @@ class Trader:
     def init_list(self, product, lst):
         if product not in lst:
             lst[product] = []
-    
+
     def not_enough_data(self, product, prices):
         return len(prices[product]) < self.window_size_large
-
-    
 
 
 class Logger:
