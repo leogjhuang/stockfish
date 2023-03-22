@@ -64,7 +64,7 @@ def isPythonFunction(line):
     return line.find('def') == 0
 
 def getSpaces(count):
-    return '' if count == 0 else ' ' + getSpaces(count - 1)
+    return '' if count <= 0 else ' ' + getSpaces(count - 1)
 
 def modifyDestFile(linesToAdd, destFile):
     loggerFlushLine = getSpaces(8) + 'logger.flush(state, orders)\n'
