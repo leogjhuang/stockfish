@@ -49,6 +49,20 @@ def get_mid_price(order_depth):
     return (best_bid + best_ask) / 2
 
 
+def get_average_price(trades):
+    """
+    Returns the average price of a list of trades
+    """
+    return sum(trade for trade in trades) / len(trades) if len(trades) != 0 else 0
+
+
+def get_average_market_trade_price(trades):
+    """
+    Returns the average price of a list of market trades
+    """
+    return sum(trade.price for trade in trades) / len(trades) if len(trades) != 0 else 0
+
+
 def get_moving_average(prices, window_size):
     """
     Returns the moving average of the last window_size trades
@@ -102,6 +116,8 @@ def fill_sell_orders(product, orders, order_depth, limit, acceptable_bid_price):
     Fills sell orders up to a given limit and price
     """
     limit = abs(limit)
+    if len(order_depth.sell_orders) == 0:
+        return
     for best_ask in range(min(order_depth.sell_orders), math.floor(acceptable_bid_price) + 1):
         if best_ask in order_depth.sell_orders:
             best_ask_volume = min(limit, -order_depth.sell_orders[best_ask])
@@ -116,6 +132,8 @@ def fill_buy_orders(product, orders, order_depth, limit, acceptable_ask_price):
     Fills buy orders up to a given limit and price
     """
     limit = abs(limit)
+    if len(order_depth.buy_orders) == 0:
+        return
     for best_bid in range(max(order_depth.buy_orders), math.ceil(acceptable_ask_price) - 1, -1):
         if best_bid in order_depth.buy_orders:
             best_bid_volume = min(limit, order_depth.buy_orders[best_bid])

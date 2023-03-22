@@ -1,47 +1,55 @@
-import math
 import json
-from typing import Dict, List, Any
-from datamodel import OrderDepth, TradingState, Order, ProsperityEncoder, Symbol
+import math
+from typing import Any, Dict, List
+from datamodel import Order, OrderDepth, ProsperityEncoder, Symbol, TradingState
+
 
 class Trader:
     """
+    Round 1
     Trading a stable and trending market respectively.
     Monitor changes in the bid/ask prices and place limit orders accordingly.
     """
     def __init__(self):
         self.position_limit = {"PEARLS": 20, "BANANAS": 20}
-        self.ask_price = {}
-        self.bid_price = {}
-        self.prices = {}
-        self.acceptable_price = {}
+        self.global_best_ask: Dict[Symbol, int] = {}
+        self.global_best_bid: Dict[Symbol, int] = {}
+        self.mid_prices: Dict[Symbol, List[int]] = {}
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         """"
-        Main entry point for the algorithm
+        Entry point for the algorithm
         """
         result = {}
 
         for product, order_depth in state.order_depths.items():
             orders: list[Order] = []
+
             position = state.position.get(product, 0)
             buy_volume = self.position_limit.get(product, 0) - position
             sell_volume = self.position_limit.get(product, 0) + position
-            best_ask, _ = get_best_ask(order_depth)
-            best_bid, _ = get_best_bid(order_depth)
-            self.ask_price[product] = min(self.ask_price.get(product, best_ask), best_ask)
-            self.bid_price[product] = max(self.bid_price.get(product, best_bid), best_bid)
 
             if product == "PEARLS":
-                if self.ask_price[product] < self.bid_price[product]:
-                    place_buy_order(product, orders, self.ask_price[product], buy_volume)
-                    place_sell_order(product, orders, self.bid_price[product], sell_volume)
-            elif product == "BANANAS":
-                if product not in self.prices:
-                    self.prices[product] = []
-                self.prices[product].append(get_mid_price(order_depth))
-                self.acceptable_price[product] = get_moving_average(self.prices[product], 15)
-                fill_sell_orders(product, orders, order_depth, buy_volume, self.acceptable_price[product])
-                fill_buy_orders(product, orders, order_depth, sell_volume, self.acceptable_price[product])
+                if len(order_depth.sell_orders) > 0:
+                    best_ask = get_best_ask(order_depth)[0]
+                    self.global_best_ask[product] = min(self.global_best_ask.get(product, best_ask), best_ask)
+                if len(order_depth.buy_orders) > 0:
+                    best_bid = get_best_bid(order_depth)[0]
+                    self.global_best_bid[product] = max(self.global_best_bid.get(product, best_bid), best_bid)
+                if product in self.global_best_ask and product in self.global_best_bid and self.global_best_ask[product] < self.global_best_bid[product]:
+                    place_buy_order(product, orders, self.global_best_ask[product], buy_volume)
+                    place_sell_order(product, orders, self.global_best_bid[product], sell_volume)
+
+            if product == "BANANAS":
+                if product not in self.mid_prices:
+                    self.mid_prices[product] = []
+                if get_mid_price(order_depth) is not None:
+                    self.mid_prices[product].append(get_mid_price(order_depth))
+                if len(self.mid_prices[product]) > 0 and len(order_depth.sell_orders) > 0 and len(order_depth.buy_orders) > 0:
+                    acceptable_price = get_moving_average(self.mid_prices[product], 5)
+                    spread = get_spread(order_depth)
+                    place_buy_order(product, orders, math.ceil(acceptable_price - spread / 3), buy_volume)
+                    place_sell_order(product, orders, math.floor(acceptable_price + spread / 3), sell_volume)
 
             result[product] = orders
 
@@ -112,6 +120,20 @@ def get_mid_price(order_depth):
     return (best_bid + best_ask) / 2
 
 
+def get_average_price(trades):
+    """
+    Returns the average price of a list of trades
+    """
+    return sum(trade for trade in trades) / len(trades) if len(trades) != 0 else 0
+
+
+def get_average_market_trade_price(trades):
+    """
+    Returns the average price of a list of market trades
+    """
+    return sum(trade.price for trade in trades) / len(trades) if len(trades) != 0 else 0
+
+
 def get_moving_average(prices, window_size):
     """
     Returns the moving average of the last window_size trades
@@ -165,6 +187,8 @@ def fill_sell_orders(product, orders, order_depth, limit, acceptable_bid_price):
     Fills sell orders up to a given limit and price
     """
     limit = abs(limit)
+    if len(order_depth.sell_orders) == 0:
+        return
     for best_ask in range(min(order_depth.sell_orders), math.floor(acceptable_bid_price) + 1):
         if best_ask in order_depth.sell_orders:
             best_ask_volume = min(limit, -order_depth.sell_orders[best_ask])
@@ -179,6 +203,8 @@ def fill_buy_orders(product, orders, order_depth, limit, acceptable_ask_price):
     Fills buy orders up to a given limit and price
     """
     limit = abs(limit)
+    if len(order_depth.buy_orders) == 0:
+        return
     for best_bid in range(max(order_depth.buy_orders), math.ceil(acceptable_ask_price) - 1, -1):
         if best_bid in order_depth.buy_orders:
             best_bid_volume = min(limit, order_depth.buy_orders[best_bid])
