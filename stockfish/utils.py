@@ -98,7 +98,6 @@ def place_buy_order(product, orders, price, quantity):
     Places a buy order
     """
     quantity = abs(quantity)
-    print("BUY", str(quantity) + "x", price)
     orders.append(Order(product, price, quantity))
 
 
@@ -107,7 +106,6 @@ def place_sell_order(product, orders, price, quantity):
     Places a sell order
     """
     quantity = abs(quantity)
-    print("SELL", str(quantity) + "x", price)
     orders.append(Order(product, price, -quantity))
 
 
