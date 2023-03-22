@@ -33,6 +33,26 @@ def filterSrcFile(srcFile):
         lines.pop(0)
     return lines
 
+def getRunReturnStatementIndex(lines):
+    seenRunFunction = False
+    for i, line in enumerate(lines):
+        if 'run(self, state: TradingState)' in line:
+            seenRunFunction = True
+        if seenRunFunction and 'return result' in line:
+            return i
+    
+    # This should never be called
+    return None
+
+# logger.flush(state, orders)
+def getLoggerClass():
+    loggerFile = './logger.py'
+    lines = readLines(loggerFile)
+    while len(lines) > 0 and not isClassDeclaration(lines[0]):
+        lines.pop(0)
+    lines.append('\n\n')
+    return lines
+
 def getUtilFunctions():
     utilsFile = './utils.py'
     lines = readLines(utilsFile)
@@ -43,10 +63,15 @@ def getUtilFunctions():
 def isPythonFunction(line):
     return line.find('def') == 0
 
+def getSpaces(count):
+    return '' if count == 0 else ' ' + getSpaces(count - 1)
+
 def modifyDestFile(linesToAdd, destFile):
+    loggerFlushLine = getSpaces(8) + 'logger.flush(state, orders)\n'
     lines = readLines(destFile)
     renameClassToTrader(linesToAdd)
-    lines += linesToAdd + getUtilFunctions()
+    lines += linesToAdd + getLoggerClass() + getUtilFunctions()
+    lines.insert(getRunReturnStatementIndex(lines), loggerFlushLine)
     write(lines, destFile)
 
 def revertDestFile(destFile):

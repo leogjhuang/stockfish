@@ -19,12 +19,3 @@ class Logger:
         self.logs = ""
 
 logger = Logger()
-
-class Trader:
-    def run(self, state: TradingState) -> dict[Symbol, list[Order]]:
-        orders = {}
-
-        # TODO: Add logic
-
-        logger.flush(state, orders)
-        return orders

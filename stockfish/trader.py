@@ -1,6 +1,7 @@
 import math
-from typing import Dict, List
-from datamodel import OrderDepth, TradingState, Order
+import json
+from typing import Dict, List, Any
+from datamodel import OrderDepth, TradingState, Order, ProsperityEncoder, Symbol
 
 class Trader:
     """
@@ -62,6 +63,7 @@ class Trader:
 
             result[product] = orders
 
+        logger.flush(state, orders)
         return result
 
     def order_by_vwap(self, product, prices, 
@@ -75,6 +77,25 @@ class Trader:
         if order_condition():
             place_order_function()
     
+
+
+class Logger:
+    def __init__(self) -> None:
+        self.logs = ""
+
+    def print(self, *objects: Any, sep: str = " ", end: str = "\n") -> None:
+        self.logs += sep.join(map(str, objects)) + end
+
+    def flush(self, state: TradingState, orders: dict[Symbol, list[Order]]) -> None:
+        print(json.dumps({
+            "state": state,
+            "orders": orders,
+            "logs": self.logs,
+        }, cls=ProsperityEncoder, separators=(",", ":"), sort_keys=True))
+
+        self.logs = ""
+
+logger = Logger()
 
 
 def get_best_bid(order_depth):
