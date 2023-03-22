@@ -1,10 +1,24 @@
-import json
+"""
+Algorithm 10
+"""
 import math
-from typing import Any, Dict, List
-from datamodel import Order, OrderDepth, ProsperityEncoder, Symbol, TradingState
+from typing import Dict, List
+from stockfish.datamodel import (
+    Order, Symbol, TradingState
+)
+from stockfish.utils import (
+    get_moving_average,
+    get_mid_price,
+    get_spread,
+    place_buy_order,
+    place_sell_order,
+    get_vwap,
+    get_best_ask,
+    get_best_bid
+)
 
 
-class Trader:
+class Algo10:
     """
     Trading a stable and trending market respectively.
     Monitor changes in the bid/ask prices and place limit orders accordingly.
@@ -95,7 +109,6 @@ class Trader:
 
             result[product] = orders
 
-        logger.flush(state, orders)
         return result
 
     def sell_signal(self, product):
@@ -162,158 +175,3 @@ class Trader:
         return len(prices[product]) < self.window_size_large
 
     
-
-
-class Logger:
-    def __init__(self) -> None:
-        self.logs = ""
-
-    def print(self, *objects: Any, sep: str = " ", end: str = "\n") -> None:
-        self.logs += sep.join(map(str, objects)) + end
-
-    def flush(self, state: TradingState, orders: dict[Symbol, list[Order]]) -> None:
-        print(json.dumps({
-            "state": state,
-            "orders": orders,
-            "logs": self.logs,
-        }, cls=ProsperityEncoder, separators=(",", ":"), sort_keys=True))
-
-        self.logs = ""
-
-logger = Logger()
-
-
-def get_best_bid(order_depth):
-    """
-    Returns the best bid and its volume
-    """
-    if len(order_depth.buy_orders) == 0:
-        return None, None
-    best_bid = max(order_depth.buy_orders)
-    best_bid_volume = order_depth.buy_orders[best_bid]
-    return best_bid, best_bid_volume
-
-
-def get_best_ask(order_depth):
-    """
-    Returns the best ask and its volume
-    """
-    if len(order_depth.sell_orders) == 0:
-        return None, None
-    best_ask = min(order_depth.sell_orders)
-    best_ask_volume = order_depth.sell_orders[best_ask]
-    return best_ask, best_ask_volume
-
-
-def get_spread(order_depth):
-    """
-    Returns the spread
-    """
-    best_bid, _ = get_best_bid(order_depth)
-    best_ask, _ = get_best_ask(order_depth)
-    if best_bid is None or best_ask is None:
-        return None
-    return best_ask - best_bid
-
-
-def get_mid_price(order_depth):
-    """
-    Returns the mid price
-    """
-    best_bid, _ = get_best_bid(order_depth)
-    best_ask, _ = get_best_ask(order_depth)
-    if best_bid is None or best_ask is None:
-        return None
-    return (best_bid + best_ask) / 2
-
-
-def get_average_price(trades):
-    """
-    Returns the average price of a list of trades
-    """
-    return sum(trade for trade in trades) / len(trades) if len(trades) != 0 else 0
-
-
-def get_average_market_trade_price(trades):
-    """
-    Returns the average price of a list of market trades
-    """
-    return sum(trade.price for trade in trades) / len(trades) if len(trades) != 0 else 0
-
-
-def get_moving_average(prices, window_size):
-    """
-    Returns the moving average of the last window_size trades
-    """
-    window_size = min(len(prices), window_size)
-    return sum(price for price in prices[-window_size:]) / window_size
-
-
-def get_moving_std(trades, window_size):
-    """
-    Returns the moving standard deviation of the last window_size trades
-    """
-    window_size = min(len(trades), window_size)
-    mean = get_moving_average(trades, window_size)
-    return math.sqrt(sum((trade.price - mean) ** 2 for trade in trades[-window_size:]) / window_size)
-
-
-def get_vwap(orders):
-    """
-    orders = order_depth.buy_orders or order_depth.sell_orders
-    """
-    weighted_sum = 0
-    quantity_sum = 0
-    for price in orders:
-        quantity = orders[price]
-        weighted_sum += price * quantity
-        quantity_sum += quantity
-    return weighted_sum / quantity_sum if quantity_sum != 0 else 0
-
-
-def place_buy_order(product, orders, price, quantity):
-    """
-    Places a buy order
-    """
-    quantity = abs(quantity)
-    orders.append(Order(product, price, quantity))
-
-
-def place_sell_order(product, orders, price, quantity):
-    """
-    Places a sell order
-    """
-    quantity = abs(quantity)
-    orders.append(Order(product, price, -quantity))
-
-
-def fill_sell_orders(product, orders, order_depth, limit, acceptable_bid_price):
-    """
-    Fills sell orders up to a given limit and price
-    """
-    limit = abs(limit)
-    if len(order_depth.sell_orders) == 0:
-        return
-    for best_ask in range(min(order_depth.sell_orders), math.floor(acceptable_bid_price) + 1):
-        if best_ask in order_depth.sell_orders:
-            best_ask_volume = min(limit, -order_depth.sell_orders[best_ask])
-            place_buy_order(product, orders, best_ask, best_ask_volume)
-            limit -= best_ask_volume
-            if limit <= 0:
-                return
-
-
-def fill_buy_orders(product, orders, order_depth, limit, acceptable_ask_price):
-    """
-    Fills buy orders up to a given limit and price
-    """
-    limit = abs(limit)
-    if len(order_depth.buy_orders) == 0:
-        return
-    for best_bid in range(max(order_depth.buy_orders), math.ceil(acceptable_ask_price) - 1, -1):
-        if best_bid in order_depth.buy_orders:
-            best_bid_volume = min(limit, order_depth.buy_orders[best_bid])
-            place_sell_order(product, orders, best_bid, best_bid_volume)
-            limit -= best_bid_volume
-            if limit <= 0:
-                return
