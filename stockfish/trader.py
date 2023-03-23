@@ -16,8 +16,8 @@ class Trader:
         self.mid_prices: Dict[Symbol, List[int]] = {}
 
         #min num of data [buy, sell]
-        self.coco_min_num_of_data = [10, 10]
-        self.pina_min_num_of_data = [8, 8]
+        self.coco_min_num_of_data = [9, 9]
+        self.pina_min_num_of_data = [7, 7]
 
         #vwap data
         self.vwap_bid_prices = {}
