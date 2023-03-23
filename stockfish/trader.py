@@ -8,6 +8,7 @@ class Trader:
     """
     Trading a stable and trending market respectively.
     Monitor changes in the bid/ask prices and place limit orders accordingly.
+    Final Profit / Loss: 22,421
     """
     def __init__(self):
         self.position_limit = {"PEARLS": 20, "BANANAS": 20, "COCONUTS": 600, "PINA_COLADAS": 300}
