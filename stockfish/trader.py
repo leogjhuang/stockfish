@@ -1,4 +1,3 @@
-import json
 import math
 from typing import Any, Dict, List
 from datamodel import Order, OrderDepth, ProsperityEncoder, Symbol, TradingState
@@ -6,16 +5,22 @@ from datamodel import Order, OrderDepth, ProsperityEncoder, Symbol, TradingState
 
 class Trader:
     """
-    Trading a trending market by analyzing how long the trend has been going on.
+    Round 2 PnL: 28862 (Pearls: 1216, Bananas: 1356, Coconuts: 10272, Pina Coladas: 16019)
+    Trading a stable, trending, and correlated market respectively.
+    Monitor changes in the bid/ask prices and place limit orders accordingly.
     """
     def __init__(self):
         self.position_limit = {"PEARLS": 20, "BANANAS": 20, "COCONUTS": 600, "PINA_COLADAS": 300}
-        self.mid_prices: Dict[Symbol, List[int]] = {}
-        self.trend_length = {"PEARLS": 5, "BANANAS": 5, "COCONUTS": 5, "PINA_COLADAS": 5}
-        self.spread_threshold = {"PEARLS": 0.1, "BANANAS": 0.1428, "COCONUTS": 0.5, "PINA_COLADAS": 0.5}
+        self.spread_coefficient = {"PEARLS": 0.4, "BANANAS": 0.3, "COCONUTS": 0.2, "PINA_COLADAS": 0.1}
+        self.moving_average_window = {"PEARLS": 5, "BANANAS": 5, "COCONUTS": 1, "PINA_COLADAS": 1}
+        self.trend_length = {"PEARLS": 0, "BANANAS": 0, "COCONUTS": 9, "PINA_COLADAS": 0}
+        self.mid_prices = {"PEARLS": [], "BANANAS": [], "COCONUTS": [], "PINA_COLADAS": []}
+        self.vwap_bid_prices = {"PEARLS": [], "BANANAS": [], "COCONUTS": [], "PINA_COLADAS": []}
+        self.vwap_ask_prices = {"PEARLS": [], "BANANAS": [], "COCONUTS": [], "PINA_COLADAS": []}
+        self.correlation = {"PEARLS": 0, "BANANAS": 0, "COCONUTS": 0, "PINA_COLADAS": 1.875}
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
-        """
+        """"
         Entry point for the algorithm
         """
         result = {}
@@ -28,99 +33,53 @@ class Trader:
             sell_volume = self.position_limit.get(product, 0) + position
             best_ask, best_ask_volume = get_best_ask(order_depth)
             best_bid, best_bid_volume = get_best_bid(order_depth)
+            best_ask_volume = min(-1 * best_ask_volume, buy_volume)
+            best_bid_volume = min(best_bid_volume, sell_volume)
+            vwap_ask = get_vwap_ask(order_depth)
+            vwap_bid = get_vwap_bid(order_depth)
+            mid_price = get_mid_price(order_depth)
+            self.vwap_bid_prices[product].append(vwap_bid)
+            self.vwap_ask_prices[product].append(vwap_ask)
+            self.mid_prices[product].append(mid_price)
 
             if product == "PEARLS":
-                if product not in self.mid_prices:
-                    self.mid_prices[product] = []
-                if get_mid_price(order_depth) is not None:
-                    self.mid_prices[product].append(get_mid_price(order_depth))
-                if len(self.mid_prices[product]) > 0 and len(order_depth.sell_orders) > 0 and len(order_depth.buy_orders) > 0:
-                    acceptable_price = get_moving_average(self.mid_prices[product], 5)
-                    difference = get_spread(order_depth) * self.spread_threshold[product]
-                    place_buy_order(product, orders, math.ceil(acceptable_price - difference), buy_volume)
-                    place_sell_order(product, orders, math.floor(acceptable_price + difference), sell_volume)
+                if len(self.mid_prices[product]) > 0:
+                    acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
+                    spread = get_spread(order_depth) * self.spread_coefficient[product]
+                    place_buy_order(product, orders, math.ceil(acceptable_price - spread), buy_volume)
+                    place_sell_order(product, orders, math.floor(acceptable_price + spread), sell_volume)
 
             if product == "BANANAS":
-                if product not in self.mid_prices:
-                    self.mid_prices[product] = []
-                if get_mid_price(order_depth) is not None:
-                    self.mid_prices[product].append(get_mid_price(order_depth))
-                if len(self.mid_prices[product]) > 0 and len(order_depth.sell_orders) > 0 and len(order_depth.buy_orders) > 0:
-                    acceptable_price = get_moving_average(self.mid_prices[product], 5)
-                    difference = get_spread(order_depth) * self.spread_threshold[product]
-                    place_buy_order(product, orders, math.ceil(acceptable_price - difference), buy_volume)
-                    place_sell_order(product, orders, math.floor(acceptable_price + difference), sell_volume)
+                if len(self.mid_prices[product]) > 0:
+                    acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
+                    spread = get_spread(order_depth) * self.spread_coefficient[product]
+                    place_buy_order(product, orders, math.ceil(acceptable_price - spread), buy_volume)
+                    place_sell_order(product, orders, math.floor(acceptable_price + spread), sell_volume)
 
             if product == "COCONUTS":
-                if product not in self.mid_prices:
-                    self.mid_prices[product] = []
-                if get_mid_price(order_depth) is not None:
-                    self.mid_prices[product].append(get_mid_price(order_depth))
-                if len(self.mid_prices[product]) > 0 and len(order_depth.sell_orders) > 0 and len(order_depth.buy_orders) > 0:
-                    acceptable_price = get_moving_average(self.mid_prices[product], 5)
-                    difference = get_spread(order_depth) * self.spread_threshold[product]
-                    place_buy_order(product, orders, math.ceil(acceptable_price - difference), buy_volume)
-                    place_sell_order(product, orders, math.floor(acceptable_price + difference), sell_volume)
+                if len(self.vwap_bid_prices[product]) > self.trend_length[product] and self.sell_signal(self.vwap_bid_prices[product], self.trend_length[product]):
+                    place_sell_order(product, orders, best_bid, best_bid_volume)
+                if len(self.vwap_ask_prices[product]) > self.trend_length[product] and self.buy_signal(self.vwap_ask_prices[product], self.trend_length[product]):
+                    place_buy_order(product, orders, best_ask, best_ask_volume)
 
             if product == "PINA_COLADAS":
-                if product not in self.mid_prices:
-                    self.mid_prices[product] = []
-                if get_mid_price(order_depth) is not None:
-                    self.mid_prices[product].append(get_mid_price(order_depth))
-                if len(self.mid_prices[product]) > 0 and len(order_depth.sell_orders) > 0 and len(order_depth.buy_orders) > 0:
-                    acceptable_price = get_moving_average(self.mid_prices[product], 5)
-                    difference = get_spread(order_depth) * self.spread_threshold[product]
-                    place_buy_order(product, orders, math.ceil(acceptable_price - difference), buy_volume)
-                    place_sell_order(product, orders, math.floor(acceptable_price + difference), sell_volume)
-
-            # if product == "COCONUTS" or product == "PINA_COLADAS":
-            #     if product not in self.mid_prices:
-            #         self.mid_prices[product] = []
-            #     if get_mid_price(order_depth) is not None:
-            #         self.mid_prices[product].append(get_mid_price(order_depth))
-            #     if len(self.mid_prices[product]) > self.trend_length[product] and len(order_depth.sell_orders) > 0 and len(order_depth.buy_orders) > 0:
-            #         acceptable_price = get_moving_average(self.mid_prices[product], 5)
-            #         if self.is_decreasing(self.mid_prices[product], self.trend_length[product]):
-            #             place_buy_order(product, orders, best_ask, min(buy_volume, best_ask_volume))
-            #         if self.is_increasing(self.mid_prices[product], self.trend_length[product]):
-            #             place_sell_order(product, orders, best_bid, min(sell_volume, best_bid_volume))
+                mid_price_coco = get_mid_price(state.order_depths["COCONUTS"])
+                actual_correlation = mid_price / mid_price_coco
+                target_correlation = self.correlation[product]
+                if actual_correlation < target_correlation and len(self.mid_prices["COCONUTS"]) >= 2 and self.mid_prices["COCONUTS"][-1] < self.mid_prices["COCONUTS"][-2]:
+                    place_buy_order(product, orders, best_ask, best_ask_volume)
+                if actual_correlation > target_correlation and len(self.mid_prices["COCONUTS"]) >= 2 and self.mid_prices["COCONUTS"][-1] > self.mid_prices["COCONUTS"][-2]:
+                    place_sell_order(product, orders, best_bid, best_bid_volume)
 
             result[product] = orders
 
-        logger.flush(state, orders)
         return result
 
-    def is_decreasing(self, data: List[int], trend_length: int) -> bool:
-        """
-        Check if the data is decreasing
-        """
-        return sum(x > y for x, y in zip(data[-trend_length:], data[-trend_length - 1:-1])) >= trend_length - 2
+    def sell_signal(self, vwaps, min_num_of_data):
+        return vwaps[-1] < vwaps[-2] and is_increasing(vwaps[-1-min_num_of_data:-1])
 
-
-    def is_increasing(self, data: List[int], trend_length: int) -> bool:
-        """
-        Check if the data is increasing
-        """
-        return sum(x < y for x, y in zip(data[-trend_length:], data[-trend_length - 1:-1])) >= trend_length - 2
-
-
-class Logger:
-    def __init__(self) -> None:
-        self.logs = ""
-
-    def print(self, *objects: Any, sep: str = " ", end: str = "\n") -> None:
-        self.logs += sep.join(map(str, objects)) + end
-
-    def flush(self, state: TradingState, orders: dict[Symbol, list[Order]]) -> None:
-        print(json.dumps({
-            "state": state,
-            "orders": orders,
-            "logs": self.logs,
-        }, cls=ProsperityEncoder, separators=(",", ":"), sort_keys=True))
-
-        self.logs = ""
-
-logger = Logger()
+    def buy_signal(self, vwaps, min_num_of_data):
+        return vwaps[-1] > vwaps[-2] and is_decreasing(vwaps[-1-min_num_of_data:-1])
 
 
 def get_best_bid(order_depth):
@@ -198,14 +157,25 @@ def get_moving_std(trades, window_size):
     return math.sqrt(sum((trade.price - mean) ** 2 for trade in trades[-window_size:]) / window_size)
 
 
-def get_vwap(orders):
+def get_vwap_bid(order_depth):
     """
-    orders = order_depth.buy_orders or order_depth.sell_orders
+    Returns the volume weighted average price of the buy orders
     """
     weighted_sum = 0
     quantity_sum = 0
-    for price in orders:
-        quantity = orders[price]
+    for price, quantity in order_depth.buy_orders.items():
+        weighted_sum += price * quantity
+        quantity_sum += quantity
+    return weighted_sum / quantity_sum if quantity_sum != 0 else 0
+
+
+def get_vwap_ask(order_depth):
+    """
+    Returns the volume weighted average price of the sell orders
+    """
+    weighted_sum = 0
+    quantity_sum = 0
+    for price, quantity in order_depth.sell_orders.items():
         weighted_sum += price * quantity
         quantity_sum += quantity
     return weighted_sum / quantity_sum if quantity_sum != 0 else 0
@@ -259,21 +229,13 @@ def fill_buy_orders(product, orders, order_depth, limit, acceptable_ask_price):
                 return
 
 def is_increasing(lst):
-    count = 0
     for i in range(1, len(lst)):
         if lst[i] < lst[i - 1]:
             return False
-        # if lst[i] >= lst[i - 1]:
-        #     count += 1
-    # return count >= 7
     return True
 
 def is_decreasing(lst):
-    count = 0
     for i in range(1, len(lst)):
         if lst[i] > lst[i - 1]:
             return False
-        # if lst[i] <= lst[i - 1]:
-        #     count += 1
-    # return count >= 7
     return True

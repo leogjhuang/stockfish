@@ -80,14 +80,25 @@ def get_moving_std(trades, window_size):
     return math.sqrt(sum((trade.price - mean) ** 2 for trade in trades[-window_size:]) / window_size)
 
 
-def get_vwap(orders):
+def get_vwap_bid(order_depth):
     """
-    orders = order_depth.buy_orders or order_depth.sell_orders
+    Returns the volume weighted average price of the buy orders
     """
     weighted_sum = 0
     quantity_sum = 0
-    for price in orders:
-        quantity = orders[price]
+    for price, quantity in order_depth.buy_orders.items():
+        weighted_sum += price * quantity
+        quantity_sum += quantity
+    return weighted_sum / quantity_sum if quantity_sum != 0 else 0
+
+
+def get_vwap_ask(order_depth):
+    """
+    Returns the volume weighted average price of the sell orders
+    """
+    weighted_sum = 0
+    quantity_sum = 0
+    for price, quantity in order_depth.sell_orders.items():
         weighted_sum += price * quantity
         quantity_sum += quantity
     return weighted_sum / quantity_sum if quantity_sum != 0 else 0
@@ -145,9 +156,9 @@ def is_increasing(lst):
     for i in range(1, len(lst)):
         if lst[i] < lst[i - 1]:
             return False
-        # if lst[i] >= lst[i - 1]:
-        #     count += 1
-    # return count >= 7
+    #     if lst[i] >= lst[i - 1]:
+    #         count += 1
+    # return count >= 8
     return True
 
 def is_decreasing(lst):
@@ -155,7 +166,7 @@ def is_decreasing(lst):
     for i in range(1, len(lst)):
         if lst[i] > lst[i - 1]:
             return False
-        # if lst[i] <= lst[i - 1]:
-        #     count += 1
-    # return count >= 7
+    #     if lst[i] <= lst[i - 1]:
+    #         count += 1
+    # return count >= 8
     return True
