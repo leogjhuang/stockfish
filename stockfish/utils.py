@@ -141,13 +141,21 @@ def fill_buy_orders(product, orders, order_depth, limit, acceptable_ask_price):
                 return
 
 def is_increasing(lst):
+    count = 0
     for i in range(1, len(lst)):
         if lst[i] < lst[i - 1]:
             return False
+        # if lst[i] >= lst[i - 1]:
+        #     count += 1
+    # return count >= 7
     return True
 
 def is_decreasing(lst):
+    count = 0
     for i in range(1, len(lst)):
         if lst[i] > lst[i - 1]:
             return False
+        # if lst[i] <= lst[i - 1]:
+        #     count += 1
+    # return count >= 7
     return True
