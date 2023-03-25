@@ -30,7 +30,7 @@ class Algo15:
         self.position_limit = {"PEARLS": 20, "BANANAS": 20, "COCONUTS": 600, "PINA_COLADAS": 300, "DIVING_GEAR": 50, "BERRIES": 250}
         self.spread_coefficient = {"PEARLS": 0.4, "BANANAS": 0.3, "COCONUTS": 0.2, "PINA_COLADAS": 0.1, "DIVING_GEAR": 0.3, "BERRIES": 0.3}
         self.moving_average_window = {"PEARLS": 5, "BANANAS": 5, "COCONUTS": 1, "PINA_COLADAS": 1, "DIVING_GEAR": 5, "BERRIES": 5}
-        self.trend_length = {"PEARLS": 0, "BANANAS": 0, "COCONUTS": 9, "PINA_COLADAS": 0, "DIVING_GEAR": 0, "BERRIES": 0}
+        self.trend_length = {"PEARLS": 0, "BANANAS": 0, "COCONUTS": 9, "PINA_COLADAS": 7, "DIVING_GEAR": 0, "BERRIES": 0}
         self.mid_prices = {"PEARLS": [], "BANANAS": [], "COCONUTS": [], "PINA_COLADAS": [], "DIVING_GEAR": [], "BERRIES": []}
         self.vwap_bid_prices = {"PEARLS": [], "BANANAS": [], "COCONUTS": [], "PINA_COLADAS": [], "DIVING_GEAR": [], "BERRIES": []}
         self.vwap_ask_prices = {"PEARLS": [], "BANANAS": [], "COCONUTS": [], "PINA_COLADAS": [], "DIVING_GEAR": [], "BERRIES": []}
@@ -90,12 +90,10 @@ class Algo15:
 
         return result
 
-    def sell_signal(self, product, min_num_of_data):
-        vwaps = self.vwap_bid_prices[product]
+    def sell_signal(self, vwaps, min_num_of_data):
         return vwaps[-1] < vwaps[-2] and is_increasing(vwaps[-1-min_num_of_data:-1])
 
-    def buy_signal(self, product, min_num_of_data):
-        vwaps = self.vwap_ask_prices[product]
+    def buy_signal(self, vwaps, min_num_of_data):
         return vwaps[-1] > vwaps[-2] and is_decreasing(vwaps[-1-min_num_of_data:-1])
 
 
