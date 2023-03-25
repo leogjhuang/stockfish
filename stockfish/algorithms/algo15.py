@@ -1,10 +1,10 @@
 """
-Round 2
+Algorithm 15
 """
 import math
 from typing import Dict, List
 from stockfish.datamodel import (
-    Order, TradingState
+    Order, Symbol, TradingState
 )
 from stockfish.utils import (
     get_moving_average,
@@ -21,10 +21,9 @@ from stockfish.utils import (
 )
 
 
-class Round2:
+class Algo15:
     """
-    Round 2 PnL: 28862 (Pearls: 1216, Bananas: 1356, Coconuts: 10272, Pina Coladas: 16019)
-    Trading a stable, trending, and correlated market respectively.
+    Trading a stable and trending market respectively.
     Monitor changes in the bid/ask prices and place limit orders accordingly.
     """
     def __init__(self):
@@ -74,41 +73,30 @@ class Round2:
                     place_buy_order(product, orders, math.ceil(acceptable_price - spread), buy_volume)
                     place_sell_order(product, orders, math.floor(acceptable_price + spread), sell_volume)
 
-            if product == "COCONUTS":
+            if product == "COCONUTS" or product == "PINA_COLADAS":
                 if len(self.vwap_bid_prices[product]) > self.trend_length[product] and self.sell_signal(self.vwap_bid_prices[product], self.trend_length[product]):
                     place_sell_order(product, orders, best_bid, best_bid_volume)
                 if len(self.vwap_ask_prices[product]) > self.trend_length[product] and self.buy_signal(self.vwap_ask_prices[product], self.trend_length[product]):
                     place_buy_order(product, orders, best_ask, best_ask_volume)
 
-            if product == "PINA_COLADAS":
-                mid_price_coco = get_mid_price(state.order_depths["COCONUTS"])
-                actual_correlation = mid_price / mid_price_coco
-                target_correlation = self.correlation[product]
-                if actual_correlation < target_correlation and len(self.mid_prices["COCONUTS"]) >= 2 and self.mid_prices["COCONUTS"][-1] < self.mid_prices["COCONUTS"][-2]:
-                    place_buy_order(product, orders, best_ask, best_ask_volume)
-                if actual_correlation > target_correlation and len(self.mid_prices["COCONUTS"]) >= 2 and self.mid_prices["COCONUTS"][-1] > self.mid_prices["COCONUTS"][-2]:
-                    place_sell_order(product, orders, best_bid, best_bid_volume)
-
-            # if product == "DIVING_GEAR":
-            #     if len(self.mid_prices[product]) > 0:
-            #         acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
-            #         spread = get_spread(order_depth) * self.spread_coefficient[product]
-            #         place_buy_order(product, orders, math.ceil(acceptable_price - spread), buy_volume)
-            #         place_sell_order(product, orders, math.floor(acceptable_price + spread), sell_volume)
-
-            # if product == "BERRIES":
-            #     if len(self.mid_prices[product]) > 0:
-            #         acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
-            #         spread = get_spread(order_depth) * self.spread_coefficient[product]
-            #         place_buy_order(product, orders, math.ceil(acceptable_price - spread), buy_volume)
-            #         place_sell_order(product, orders, math.floor(acceptable_price + spread), sell_volume)
+            if product == "BERRIES":
+                if len(self.mid_prices[product]) > 0:
+                    acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
+                    spread = get_spread(order_depth) * self.spread_coefficient[product]
+                    place_buy_order(product, orders, math.ceil(acceptable_price - spread), buy_volume)
+                    place_sell_order(product, orders, math.floor(acceptable_price + spread), sell_volume)
 
             result[product] = orders
 
         return result
 
-    def sell_signal(self, vwaps, min_num_of_data):
+    def sell_signal(self, product, min_num_of_data):
+        vwaps = self.vwap_bid_prices[product]
         return vwaps[-1] < vwaps[-2] and is_increasing(vwaps[-1-min_num_of_data:-1])
 
-    def buy_signal(self, vwaps, min_num_of_data):
+    def buy_signal(self, product, min_num_of_data):
+        vwaps = self.vwap_ask_prices[product]
         return vwaps[-1] > vwaps[-2] and is_decreasing(vwaps[-1-min_num_of_data:-1])
+
+
+    

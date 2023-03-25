@@ -12,7 +12,8 @@ from stockfish.utils import (
     get_spread,
     place_buy_order,
     place_sell_order,
-    get_vwap,
+    get_vwap_bid,
+    get_vwap_ask,
     get_best_ask,
     get_best_bid,
     is_increasing,
@@ -89,7 +90,8 @@ class Algo11:
                 self.order_by_vwap(
                     product=product,
                     prices=self.vwap_bid_prices,
-                    book=order_depth.buy_orders,
+                    book=order_depth,
+                    get_vwap=get_vwap_bid,
                     min_num_of_data=min_num_of_data[1],
                     order_condition=lambda : self.sell_signal(product, min_num_of_data[1]),
                     place_order_function=lambda : place_sell_order(product, orders, best_bid, best_bid_volume)
@@ -98,7 +100,8 @@ class Algo11:
                 self.order_by_vwap(
                     product=product,
                     prices=self.vwap_ask_prices,
-                    book=order_depth.sell_orders,
+                    book=order_depth,
+                    get_vwap=get_vwap_ask,
                     min_num_of_data=min_num_of_data[0],
                     order_condition=lambda : self.buy_signal(product, min_num_of_data[0]),
                     place_order_function=lambda : place_buy_order(product, orders, best_ask, best_ask_volume)
@@ -120,6 +123,7 @@ class Algo11:
                       book,
                       min_num_of_data,
                       order_condition, 
+                      get_vwap,
                       place_order_function):
         self.init_list(product, prices)
         prices[product].append(get_vwap(book))
