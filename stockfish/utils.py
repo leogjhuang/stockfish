@@ -152,21 +152,31 @@ def fill_buy_orders(product, orders, order_depth, limit, acceptable_ask_price):
                 return
 
 def is_increasing(lst):
-    count = 0
+    """
+    Returns True if the list is increasing, False otherwise
+    """
     for i in range(1, len(lst)):
         if lst[i] < lst[i - 1]:
             return False
-    #     if lst[i] >= lst[i - 1]:
-    #         count += 1
-    # return count >= 8
     return True
 
 def is_decreasing(lst):
-    count = 0
+    """
+    Returns True if the list is decreasing, False otherwise
+    """
     for i in range(1, len(lst)):
         if lst[i] > lst[i - 1]:
             return False
-    #     if lst[i] <= lst[i - 1]:
-    #         count += 1
-    # return count >= 8
     return True
+
+def sell_signal(prices, window_size):
+    """
+    Returns True if the price has been increasing for the last window_size trades but is starting to decrease
+    """
+    return is_increasing(prices[-1 - window_size:-1]) and prices[-1] < prices[-2]
+
+def buy_signal(prices, window_size):
+    """
+    Returns True if the price has been decreasing for the last window_size trades but is starting to increase
+    """
+    return is_decreasing(prices[-1 - window_size:-1]) and prices[-1] > prices[-2]
