@@ -28,7 +28,7 @@ class Algo15:
     """
     def __init__(self):
         self.position_limit = {"PEARLS": 20, "BANANAS": 20, "COCONUTS": 600, "PINA_COLADAS": 300, "DIVING_GEAR": 50, "BERRIES": 250}
-        self.spread_coefficient = {"PEARLS": 0.4, "BANANAS": 0.3, "COCONUTS": 0.2, "PINA_COLADAS": 0.1, "DIVING_GEAR": 0.3, "BERRIES": 0.3}
+        self.spread_coefficient = {"PEARLS": 0.4, "BANANAS": 0.3, "COCONUTS": 0.2, "PINA_COLADAS": 0.1, "DIVING_GEAR": 0.3, "BERRIES": 0.45}
         self.trend_coefficient = {"PEARLS": 0.0, "BANANAS": 0.0, "COCONUTS": 0.0, "PINA_COLADAS": 0.0, "DIVING_GEAR": 0.0, "BERRIES": 0.5}
         self.moving_average_window = {"PEARLS": 5, "BANANAS": 5, "COCONUTS": 1, "PINA_COLADAS": 1, "DIVING_GEAR": 5, "BERRIES": 5}
         self.trend_length = {"PEARLS": 0, "BANANAS": 0, "COCONUTS": 9, "PINA_COLADAS": 7, "DIVING_GEAR": 0, "BERRIES": 0}
