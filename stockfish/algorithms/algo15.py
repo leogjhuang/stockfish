@@ -36,12 +36,15 @@ class Algo15:
         self.vwap_bid_prices = {"PEARLS": [], "BANANAS": [], "COCONUTS": [], "PINA_COLADAS": [], "DIVING_GEAR": [], "BERRIES": []}
         self.vwap_ask_prices = {"PEARLS": [], "BANANAS": [], "COCONUTS": [], "PINA_COLADAS": [], "DIVING_GEAR": [], "BERRIES": []}
         self.correlation = {"PEARLS": 0, "BANANAS": 0, "COCONUTS": 0, "PINA_COLADAS": 1.875, "DIVING_GEAR": 0, "BERRIES": 0}
+        self.dolphin_sightings = []
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         """"
         Entry point for the algorithm
         """
         result = {}
+        if "DOLPHIN_SIGHTINGS" in state.observations:
+            self.dolphin_sightings.append(state.observations["DOLPHIN_SIGHTINGS"])
 
         for product, order_depth in state.order_depths.items():
             orders: list[Order] = []
@@ -93,6 +96,9 @@ class Algo15:
                         spread = get_spread(order_depth) * self.spread_coefficient[product]
                         place_buy_order(product, orders, math.ceil(acceptable_price - spread * (1 + self.trend_coefficient[product])), buy_volume)
                         place_sell_order(product, orders, math.floor(acceptable_price + spread * (1 - self.trend_coefficient[product])), sell_volume)
+
+            if product == "DIVING_GEAR":
+                pass
 
             result[product] = orders
 
