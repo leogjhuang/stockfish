@@ -65,7 +65,7 @@ class Algo16:
         result = {}
 
         if DOLPHIN_SIGHTINGS in state.observations:
-            self.dolphin_sightings_list.append(state.observations[self.dolphin_sightings])
+            self.dolphin_sightings_list.append(state.observations[DOLPHIN_SIGHTINGS])
 
         if len(self.dolphin_sightings_list) > 1:
             self.dolphin_sightings_diff.append(self.dolphin_sightings_list[-1] - self.dolphin_sightings_list[-2])
@@ -138,7 +138,7 @@ class Algo16:
                         place_sell_order(product, orders, math.floor(acceptable_price + spread * (1 - trend_coefficient)), sell_volume)
 
             if product == DIVING_GEAR:
-                window = self.moving_average_window[self.dolphin_sightings]
+                window = self.moving_average_window[DOLPHIN_SIGHTINGS]
                 volatility_coefficient = 2.5
                 if len(self.dolphin_sightings_diff) >= window:
                     volatility = np.std(self.dolphin_sightings_diff[-window:])
