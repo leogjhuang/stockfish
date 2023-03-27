@@ -23,10 +23,9 @@ class Trader:
         self.spread_coefficient = {self.pearls: 0.4, self.bananas: 0.35, self.berries: 0.3}
         self.moving_average_window = {self.pearls: 5, self.bananas: 5, self.berries: 5, self.dolphin_sightings: 9}
         self.trend_length = {self.coconuts: 9, self.pina_coladas: 7}
-        self.mid_prices = {self.pearls: [], self.bananas: [], self.coconuts: [], self.pina_coladas: [], self.diving_gear: [], self.berries: []}
-        self.vwap_bid_prices = {self.pearls: [], self.bananas: [], self.coconuts: [], self.pina_coladas: [], self.diving_gear: [], self.berries: []}
-        self.vwap_ask_prices = {self.pearls: [], self.bananas: [], self.coconuts: [], self.pina_coladas: [], self.diving_gear: [], self.berries: []}
-        self.correlation = {self.pearls: 0, self.bananas: 0, self.coconuts: 0, self.pina_coladas: 1.9, self.diving_gear: 0, self.berries: 0}
+        self.vwap_ask_prices = {}
+        self.vwap_bid_prices = {}
+        self.mid_prices = {}
         self.dolphin_sightings_list = []
         self.dolphin_sightings_diff = []
 
@@ -53,8 +52,15 @@ class Trader:
             vwap_ask = get_vwap_ask(order_depth)
             vwap_bid = get_vwap_bid(order_depth)
             mid_price = get_mid_price(order_depth)
-            self.vwap_bid_prices[product].append(vwap_bid)
+
+            if product not in self.vwap_ask_prices:
+                self.vwap_ask_prices[product] = []
+            if product not in self.vwap_bid_prices:
+                self.vwap_bid_prices[product] = []
+            if product not in self.mid_prices:
+                self.mid_prices[product] = []
             self.vwap_ask_prices[product].append(vwap_ask)
+            self.vwap_bid_prices[product].append(vwap_bid)
             self.mid_prices[product].append(mid_price)
 
             if product == self.pearls:

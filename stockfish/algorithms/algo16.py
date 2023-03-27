@@ -1,5 +1,5 @@
 """
-Round 3
+Algorithm 16
 """
 import math
 from typing import Dict, List
@@ -19,27 +19,39 @@ from stockfish.utils import (
     get_best_bid,
     buy_signal,
     sell_signal,
+    PEARLS,
+    BANANAS,
+    COCONUTS,
+    PINA_COLADAS,
+    DIVING_GEAR,
+    BERRIES,
+    DOLPHIN_SIGHTINGS,
+    BAGUETTE,
+    DIP,
+    UKELELE,
+    PICNIC_BASKET,
 )
 
 
-class Algo15:
+class Algo16:
     """
-    Round 3 PnL: 15024 (Pearls: 1233, Bananas: 1213, Coconuts: 3972, Pina Coladas: 1727, Diving Gear: 4057, Berries: 2822)
-    Trading a stable, trending, correlated, lead-lag, and seasonal asset respectively.
+    Using stable, trending, correlated, lead-lag, seasonal, and ETF strategies to trade.
     """
     def __init__(self):
-        self.pearls = "PEARLS"
-        self.bananas = "BANANAS"
-        self.coconuts = "COCONUTS"
-        self.pina_coladas = "PINA_COLADAS"
-        self.diving_gear = "DIVING_GEAR"
-        self.berries = "BERRIES"
-        self.dolphin_sightings = "DOLPHIN_SIGHTINGS"
-
-        self.position_limit = {self.pearls: 20, self.bananas: 20, self.coconuts: 600, self.pina_coladas: 300, self.diving_gear: 50, self.berries: 250}
-        self.spread_coefficient = {self.pearls: 0.4, self.bananas: 0.35, self.berries: 0.3}
-        self.moving_average_window = {self.pearls: 5, self.bananas: 5, self.berries: 5, self.dolphin_sightings: 9}
-        self.trend_length = {self.coconuts: 9, self.pina_coladas: 7}
+        self.position_limit = {
+            PEARLS: 20,
+            BANANAS: 20,
+            COCONUTS: 600,
+            PINA_COLADAS: 300,
+            DIVING_GEAR: 50,
+            BERRIES: 250,
+            BAGUETTE: 150,
+            DIP: 300,
+            UKELELE: 70,
+            PICNIC_BASKET: 70}
+        self.spread_coefficient = {PEARLS: 0.4, BANANAS: 0.35, BERRIES: 0.3}
+        self.moving_average_window = {PEARLS: 5, BANANAS: 5, BERRIES: 5, DOLPHIN_SIGHTINGS: 9}
+        self.trend_length = {COCONUTS: 9, PINA_COLADAS: 7}
         self.vwap_ask_prices = {}
         self.vwap_bid_prices = {}
         self.mid_prices = {}
@@ -52,7 +64,7 @@ class Algo15:
         """
         result = {}
 
-        if self.dolphin_sightings in state.observations:
+        if DOLPHIN_SIGHTINGS in state.observations:
             self.dolphin_sightings_list.append(state.observations[self.dolphin_sightings])
 
         if len(self.dolphin_sightings_list) > 1:
@@ -80,27 +92,27 @@ class Algo15:
             self.vwap_bid_prices[product].append(vwap_bid)
             self.mid_prices[product].append(mid_price)
 
-            if product == self.pearls:
+            if product == PEARLS:
                 if len(self.mid_prices[product]) > 0:
                     acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
                     spread = get_spread(order_depth) * self.spread_coefficient[product]
                     place_buy_order(product, orders, math.ceil(acceptable_price - spread), buy_volume)
                     place_sell_order(product, orders, math.floor(acceptable_price + spread), sell_volume)
 
-            if product == self.bananas:
+            if product == BANANAS:
                 if len(self.mid_prices[product]) > 0:
                     acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
                     spread = get_spread(order_depth) * self.spread_coefficient[product]
                     place_buy_order(product, orders, math.ceil(acceptable_price - spread), buy_volume)
                     place_sell_order(product, orders, math.floor(acceptable_price + spread), sell_volume)
 
-            if product == self.coconuts:
+            if product == COCONUTS:
                 if len(self.vwap_bid_prices[product]) > self.trend_length[product] and sell_signal(self.vwap_bid_prices[product], self.trend_length[product]):
                     place_sell_order(product, orders, best_bid, sell_volume)
                 if len(self.vwap_ask_prices[product]) > self.trend_length[product] and buy_signal(self.vwap_ask_prices[product], self.trend_length[product]):
                     place_buy_order(product, orders, best_ask, buy_volume)
 
-            if product == self.pina_coladas:
+            if product == PINA_COLADAS:
                 target_correlation = 1.8761
                 mid_price_coco = get_mid_price(state.order_depths["COCONUTS"])
                 actual_correlation = mid_price / mid_price_coco
@@ -109,7 +121,7 @@ class Algo15:
                 if actual_correlation > target_correlation and len(self.mid_prices["COCONUTS"]) >= 2 and self.mid_prices["COCONUTS"][-1] > self.mid_prices["COCONUTS"][-2]:
                     place_sell_order(product, orders, best_bid, sell_volume)
 
-            if product == self.berries:
+            if product == BERRIES:
                 peak_start = 450000
                 trend_coefficient = 0.5
                 if state.timestamp <= peak_start:
@@ -125,7 +137,7 @@ class Algo15:
                         place_buy_order(product, orders, math.ceil(acceptable_price - spread * (1 + trend_coefficient)), buy_volume)
                         place_sell_order(product, orders, math.floor(acceptable_price + spread * (1 - trend_coefficient)), sell_volume)
 
-            if product == self.diving_gear:
+            if product == DIVING_GEAR:
                 window = self.moving_average_window[self.dolphin_sightings]
                 volatility_coefficient = 2.5
                 if len(self.dolphin_sightings_diff) >= window:

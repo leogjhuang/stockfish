@@ -151,6 +151,7 @@ def fill_buy_orders(product, orders, order_depth, limit, acceptable_ask_price):
             if limit <= 0:
                 return
 
+
 def is_increasing(lst):
     """
     Returns True if the list is increasing, False otherwise
@@ -159,6 +160,7 @@ def is_increasing(lst):
         if lst[i] < lst[i - 1]:
             return False
     return True
+
 
 def is_decreasing(lst):
     """
@@ -169,14 +171,29 @@ def is_decreasing(lst):
             return False
     return True
 
-def sell_signal(prices, window_size):
-    """
-    Returns True if the price has been increasing for the last window_size trades but is starting to decrease
-    """
-    return is_increasing(prices[-1 - window_size:-1]) and prices[-1] < prices[-2]
 
 def buy_signal(prices, window_size):
     """
     Returns True if the price has been decreasing for the last window_size trades but is starting to increase
     """
     return is_decreasing(prices[-1 - window_size:-1]) and prices[-1] > prices[-2]
+
+
+def sell_signal(prices, window_size):
+    """
+    Returns True if the price has been increasing for the last window_size trades but is starting to decrease
+    """
+    return is_increasing(prices[-1 - window_size:-1]) and prices[-1] < prices[-2]
+
+
+PEARLS = "PEARLS"
+BANANAS = "BANANAS"
+COCONUTS = "COCONUTS"
+PINA_COLADAS = "PINA_COLADAS"
+DIVING_GEAR = "DIVING_GEAR"
+BERRIES = "BERRIES"
+DOLPHIN_SIGHTINGS = "DOLPHIN_SIGHTINGS"
+BAGUETTE = "BAGUETTE"
+DIP = "DIP"
+UKELELE = "UKELELE"
+PICNIC_BASKET = "PICNIC_BASKET"
