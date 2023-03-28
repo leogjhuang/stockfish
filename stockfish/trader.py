@@ -6,7 +6,7 @@ from datamodel import Order, OrderDepth, ProsperityEncoder, Symbol, Trade, Tradi
 
 class Trader:
     """
-    Using stable, trending, correlated, lead-lag, seasonal, and ETF strategies to trade.
+    Using stable, trending, pairs, seasonal, and correlated strategies to trade.
     """
     def __init__(self):
         self.position_limit = {
@@ -22,12 +22,9 @@ class Trader:
             PICNIC_BASKET: 70
         }
         self.mid_prices = {}
-        self.observations = {}
+        self.last_observation = {}
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
-        """"
-        Entry point for the algorithm
-        """
         result = {}
 
         self.trade_stable(
@@ -50,6 +47,7 @@ class Trader:
             COCONUTS,
             1.878
         )
+        # TODO: Consider better time windows
         self.trade_seasonal(
             state,
             result,
@@ -66,6 +64,7 @@ class Trader:
             DOLPHIN_SIGHTINGS,
             8
         )
+        # TODO: Add ETF strategy
 
         logger.flush(state, result)
         return result
@@ -89,8 +88,8 @@ class Trader:
         buy_volume = self.position_limit.get(product, 0) - position
         sell_volume = self.position_limit.get(product, 0) + position
         acceptable_price = get_moving_average(self.mid_prices[product], window)
-        place_buy_order(product, result[product], acceptable_price - 1, buy_volume)
-        place_sell_order(product, result[product], acceptable_price + 1, sell_volume)
+        place_buy_order(product, result[product], acceptable_price - 2, buy_volume)
+        place_sell_order(product, result[product], acceptable_price + 2, sell_volume)
 
     def trade_pairs(self, state, result, product1, product2, correlation):
         if product1 not in result:
@@ -115,6 +114,7 @@ class Trader:
                 place_buy_order(product1, result[product1], self.mid_prices[product1][-1], buy_volume1)
             if actual_correlation > correlation and self.mid_prices[product2][-1] > self.mid_prices[product2][-2]:
                 place_sell_order(product1, result[product1], self.mid_prices[product1][-1], sell_volume1)
+        # TODO: Add logic for trading second product
 
     def trade_seasonal(self, state, result, product, peak_start, peak_end, trough_start, trough_end):
         if product not in result:
@@ -131,19 +131,19 @@ class Trader:
     def trade_correlated(self, state, result, product, observation, change_threshold):
         if product not in result:
             result[product] = []
-        if observation not in self.observations:
-            self.observations[observation] = []
-        self.observations[observation].append(state.observations[observation])
         position = state.position.get(product, 0)
         buy_volume = self.position_limit.get(product, 0) - position
         sell_volume = self.position_limit.get(product, 0) + position
         mid_price = get_mid_price(state.order_depths[product])
-        if len(self.observations[observation]) > 1:
-            change = self.observations[observation][-1] - self.observations[observation][-2]
+        observation_value = state.observations[observation]
+        if observation in self.last_observation:
+            change = observation_value - self.last_observation[observation]
+            # TODO: Check if trading at mid price is able to fill position to limit
             if change >= change_threshold:
                 place_buy_order(product, result[product], mid_price, buy_volume)
             if change <= -change_threshold:
                 place_sell_order(product, result[product], mid_price, sell_volume)
+        self.last_observation[observation] = observation_value
 
 
 class Logger:

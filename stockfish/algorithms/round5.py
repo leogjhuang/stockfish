@@ -43,7 +43,7 @@ class Round5:
             PICNIC_BASKET: 70
         }
         self.mid_prices = {}
-        self.observations = {}
+        self.last_observation = {}
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         result = {}
@@ -151,17 +151,16 @@ class Round5:
     def trade_correlated(self, state, result, product, observation, change_threshold):
         if product not in result:
             result[product] = []
-        if observation not in self.observations:
-            self.observations[observation] = []
-        self.observations[observation].append(state.observations[observation])
         position = state.position.get(product, 0)
         buy_volume = self.position_limit.get(product, 0) - position
         sell_volume = self.position_limit.get(product, 0) + position
         mid_price = get_mid_price(state.order_depths[product])
-        if len(self.observations[observation]) > 1:
-            change = self.observations[observation][-1] - self.observations[observation][-2]
+        observation_value = state.observations[observation]
+        if observation in self.last_observation:
+            change = observation_value - self.last_observation[observation]
             # TODO: Check if trading at mid price is able to fill position to limit
             if change >= change_threshold:
                 place_buy_order(product, result[product], mid_price, buy_volume)
             if change <= -change_threshold:
                 place_sell_order(product, result[product], mid_price, sell_volume)
+        self.last_observation[observation] = observation_value
