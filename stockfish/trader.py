@@ -30,62 +30,120 @@ class Trader:
         """
         result = {}
 
-        for product in state.observations:
-            if product not in self.observations:
-                self.observations[product] = []
-            self.observations[product].append(state.observations[product])
+        self.trade_stable(
+            state,
+            result,
+            PEARLS,
+            9999,
+            10001
+        )
+        self.trade_trending(
+            state,
+            result,
+            BANANAS,
+            3
+        )
+        self.trade_pairs(
+            state,
+            result,
+            PINA_COLADAS,
+            COCONUTS,
+            1.878
+        )
+        self.trade_seasonal(
+            state,
+            result,
+            BERRIES,
+            125000,
+            200000,
+            500000,
+            575000
+        )
+        self.trade_correlated(
+            state,
+            result,
+            DIVING_GEAR,
+            DOLPHIN_SIGHTINGS,
+            8
+        )
 
-        for product, order_depth in sorted(state.order_depths.items()):
-            orders: list[Order] = []
-
-            position = state.position.get(product, 0)
-            buy_volume = self.position_limit.get(product, 0) - position
-            sell_volume = self.position_limit.get(product, 0) + position
-            best_ask, _ = get_best_ask(order_depth)
-            best_bid, _ = get_best_bid(order_depth)
-            mid_price = get_mid_price(order_depth)
-
-            if product not in self.mid_prices:
-                self.mid_prices[product] = []
-            self.mid_prices[product].append(mid_price)
-
-            if product == PEARLS:
-                place_buy_order(product, orders, 9999, buy_volume)
-                place_sell_order(product, orders, 10001, sell_volume)
-
-            if product == BANANAS:
-                acceptable_price = get_moving_average(self.mid_prices[product], 3)
-                place_buy_order(product, orders, acceptable_price - 1, buy_volume)
-                place_sell_order(product, orders, acceptable_price + 1, sell_volume)
-
-            if product == PINA_COLADAS:
-                expected_correlation = 1.878
-                if len(self.mid_prices[COCONUTS]) > 1:
-                    actual_correlation = mid_price / self.mid_prices[COCONUTS][-1]
-                    if actual_correlation < expected_correlation and self.mid_prices[COCONUTS][-1] < self.mid_prices[COCONUTS][-2]:
-                        place_buy_order(product, orders, mid_price, buy_volume)
-                    if actual_correlation > expected_correlation and self.mid_prices[COCONUTS][-1] > self.mid_prices[COCONUTS][-2]:
-                        place_sell_order(product, orders, mid_price, sell_volume)
-
-            if product == BERRIES:
-                if position != self.position_limit[product] and state.timestamp >= 123000 and state.timestamp <= 200000:
-                    place_buy_order(product, orders, best_ask, buy_volume)
-                if position != -self.position_limit[product] and state.timestamp >= 498000:
-                    place_sell_order(product, orders, best_bid, sell_volume)
-
-            if product == DIVING_GEAR:
-                change_threshold = 8
-                if len(self.observations[DOLPHIN_SIGHTINGS]) > 1:
-                    change = self.observations[DOLPHIN_SIGHTINGS][-1] - self.observations[DOLPHIN_SIGHTINGS][-2]
-                    if change >= change_threshold:
-                        place_buy_order(product, orders, best_ask, buy_volume)
-                    if change <= -change_threshold:
-                        place_sell_order(product, orders, best_bid, sell_volume)
-
-            result[product] = orders
-
-        logger.flush(state, orders)
+        logger.flush(state, result)
         return result
+
+    def trade_stable(self, state, result, product, ask_price, bid_price):
+        if product not in result:
+            result[product] = []
+        position = state.position.get(product, 0)
+        buy_volume = self.position_limit.get(product, 0) - position
+        sell_volume = self.position_limit.get(product, 0) + position
+        place_buy_order(product, result[product], ask_price, buy_volume)
+        place_sell_order(product, result[product], bid_price, sell_volume)
+
+    def trade_trending(self, state, result, product, window):
+        if product not in result:
+            result[product] = []
+        if product not in self.mid_prices:
+            self.mid_prices[product] = []
+        self.mid_prices[product].append(get_mid_price(state.order_depths[product]))
+        position = state.position.get(product, 0)
+        buy_volume = self.position_limit.get(product, 0) - position
+        sell_volume = self.position_limit.get(product, 0) + position
+        acceptable_price = get_moving_average(self.mid_prices[product], window)
+        place_buy_order(product, result[product], acceptable_price - 1, buy_volume)
+        place_sell_order(product, result[product], acceptable_price + 1, sell_volume)
+
+    def trade_pairs(self, state, result, product1, product2, correlation):
+        if product1 not in result:
+            result[product1] = []
+        if product2 not in result:
+            result[product2] = []
+        if product1 not in self.mid_prices:
+            self.mid_prices[product1] = []
+        if product2 not in self.mid_prices:
+            self.mid_prices[product2] = []
+        self.mid_prices[product1].append(get_mid_price(state.order_depths[product1]))
+        self.mid_prices[product2].append(get_mid_price(state.order_depths[product2]))
+        position1 = state.position.get(product1, 0)
+        position2 = state.position.get(product2, 0)
+        buy_volume1 = self.position_limit.get(product1, 0) - position1
+        sell_volume1 = self.position_limit.get(product1, 0) + position1
+        buy_volume2 = self.position_limit.get(product2, 0) - position2
+        sell_volume2 = self.position_limit.get(product2, 0) + position2
+        actual_correlation = self.mid_prices[product1][-1] / self.mid_prices[product2][-1]
+        if len(self.mid_prices[product2]) > 1:
+            if actual_correlation < correlation and self.mid_prices[product2][-1] < self.mid_prices[product2][-2]:
+                place_buy_order(product1, result[product1], self.mid_prices[product1][-1], buy_volume1)
+            if actual_correlation > correlation and self.mid_prices[product2][-1] > self.mid_prices[product2][-2]:
+                place_sell_order(product1, result[product1], self.mid_prices[product1][-1], sell_volume1)
+
+    def trade_seasonal(self, state, result, product, peak_start, peak_end, trough_start, trough_end):
+        if product not in result:
+            result[product] = []
+        position = state.position.get(product, 0)
+        buy_volume = self.position_limit.get(product, 0) - position
+        sell_volume = self.position_limit.get(product, 0) + position
+        mid_price = get_mid_price(state.order_depths[product])
+        if buy_volume > 0 and state.timestamp >= peak_start and state.timestamp <= peak_end:
+            place_buy_order(product, result[product], mid_price, buy_volume)
+        if sell_volume > 0 and state.timestamp >= trough_start and state.timestamp <= trough_end:
+            place_sell_order(product, result[product], mid_price, sell_volume)
+
+    def trade_correlated(self, state, result, product, observation, change_threshold):
+        if product not in result:
+            result[product] = []
+        if observation not in self.observations:
+            self.observations[observation] = []
+        self.observations[observation].append(state.observations[observation])
+        position = state.position.get(product, 0)
+        buy_volume = self.position_limit.get(product, 0) - position
+        sell_volume = self.position_limit.get(product, 0) + position
+        mid_price = get_mid_price(state.order_depths[product])
+        if len(self.observations[observation]) > 1:
+            change = self.observations[observation][-1] - self.observations[observation][-2]
+            if change >= change_threshold:
+                place_buy_order(product, result[product], mid_price, buy_volume)
+            if change <= -change_threshold:
+                place_sell_order(product, result[product], mid_price, sell_volume)
 
 
 class Logger:
@@ -260,6 +318,8 @@ def place_buy_order(product, orders, price, quantity):
     """
     Places a buy order
     """
+    if quantity == 0:
+        return
     quantity = abs(quantity)
     orders.append(Order(product, price, quantity))
 
@@ -268,6 +328,8 @@ def place_sell_order(product, orders, price, quantity):
     """
     Places a sell order
     """
+    if quantity == 0:
+        return
     quantity = abs(quantity)
     orders.append(Order(product, price, -quantity))
 

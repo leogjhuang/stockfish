@@ -108,6 +108,8 @@ def place_buy_order(product, orders, price, quantity):
     """
     Places a buy order
     """
+    if quantity == 0:
+        return
     quantity = abs(quantity)
     orders.append(Order(product, price, quantity))
 
@@ -116,6 +118,8 @@ def place_sell_order(product, orders, price, quantity):
     """
     Places a sell order
     """
+    if quantity == 0:
+        return
     quantity = abs(quantity)
     orders.append(Order(product, price, -quantity))
 

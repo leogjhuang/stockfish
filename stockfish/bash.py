@@ -1,8 +1,8 @@
 import sys
 
 '''
-Used to update trade.py with the path containing the trading algorithm followed by any helper files used: 
-Sample command to run on the command line if the algorithm is contained in ./algorithms/algo1.py: 
+Used to update trade.py with the path containing the trading algorithm followed by any helper files used:
+Sample command to run on the command line if the algorithm is contained in ./algorithms/algo1.py:
 python3 bash.py ./algorithms/algo1.py
 '''
 
@@ -40,7 +40,7 @@ def getRunReturnStatementIndex(lines):
             seenRunFunction = True
         if seenRunFunction and 'return result' in line:
             return i
-    
+
     # This should never be called
     return None
 
@@ -67,7 +67,7 @@ def getSpaces(count):
     return '' if count <= 0 else ' ' + getSpaces(count - 1)
 
 def modifyDestFile(linesToAdd, destFile):
-    loggerFlushLine = getSpaces(8) + 'logger.flush(state, orders)\n'
+    loggerFlushLine = getSpaces(8) + 'logger.flush(state, result)\n'
     lines = readLines(destFile)
     renameClassToTrader(linesToAdd)
     lines += linesToAdd + getLoggerClass() + getUtilFunctions()
@@ -128,5 +128,3 @@ def formatStateToJSON():
 
 if __name__ == "__main__":
     main()
-  
-
