@@ -68,6 +68,7 @@ class Round5:
             COCONUTS,
             1.878
         )
+        # TODO: Consider better time windows
         self.trade_seasonal(
             state,
             result,
@@ -84,6 +85,7 @@ class Round5:
             DOLPHIN_SIGHTINGS,
             8
         )
+        # TODO: Add ETF strategy
 
         return result
 
@@ -132,6 +134,7 @@ class Round5:
                 place_buy_order(product1, result[product1], self.mid_prices[product1][-1], buy_volume1)
             if actual_correlation > correlation and self.mid_prices[product2][-1] > self.mid_prices[product2][-2]:
                 place_sell_order(product1, result[product1], self.mid_prices[product1][-1], sell_volume1)
+        # TODO: Add logic for trading second product
 
     def trade_seasonal(self, state, result, product, peak_start, peak_end, trough_start, trough_end):
         if product not in result:
@@ -157,6 +160,7 @@ class Round5:
         mid_price = get_mid_price(state.order_depths[product])
         if len(self.observations[observation]) > 1:
             change = self.observations[observation][-1] - self.observations[observation][-2]
+            # TODO: Check if trading at mid price is able to fill position to limit
             if change >= change_threshold:
                 place_buy_order(product, result[product], mid_price, buy_volume)
             if change <= -change_threshold:
