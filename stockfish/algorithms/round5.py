@@ -66,7 +66,8 @@ class Round5:
             result,
             PINA_COLADAS,
             COCONUTS,
-            1.878
+            1.875,
+            0.001
         )
         # TODO: Consider better time windows
         self.trade_seasonal(
@@ -90,6 +91,8 @@ class Round5:
         return result
 
     def trade_stable(self, state, result, product, ask_price, bid_price):
+        if product not in state.order_depths:
+            return
         if product not in result:
             result[product] = []
         position = state.position.get(product, 0)
@@ -99,6 +102,8 @@ class Round5:
         place_sell_order(product, result[product], bid_price, sell_volume)
 
     def trade_trending(self, state, result, product, window):
+        if product not in state.order_depths:
+            return
         if product not in result:
             result[product] = []
         if product not in self.mid_prices:
@@ -111,7 +116,9 @@ class Round5:
         place_buy_order(product, result[product], acceptable_price - 1, buy_volume)
         place_sell_order(product, result[product], acceptable_price + 1, sell_volume)
 
-    def trade_pairs(self, state, result, product1, product2, correlation):
+    def trade_pairs(self, state, result, product1, product2, correlation, tolerance):
+        if product1 not in state.order_depths or product2 not in state.order_depths:
+            return
         if product1 not in result:
             result[product1] = []
         if product2 not in result:
@@ -130,13 +137,15 @@ class Round5:
         sell_volume2 = self.position_limit.get(product2, 0) + position2
         actual_correlation = self.mid_prices[product1][-1] / self.mid_prices[product2][-1]
         if len(self.mid_prices[product2]) > 1:
-            if actual_correlation < correlation and self.mid_prices[product2][-1] < self.mid_prices[product2][-2]:
+            if actual_correlation <= correlation - tolerance and self.mid_prices[product2][-1] < self.mid_prices[product2][-2]:
                 place_buy_order(product1, result[product1], self.mid_prices[product1][-1], buy_volume1)
-            if actual_correlation > correlation and self.mid_prices[product2][-1] > self.mid_prices[product2][-2]:
+            if actual_correlation >= correlation + tolerance and self.mid_prices[product2][-1] > self.mid_prices[product2][-2]:
                 place_sell_order(product1, result[product1], self.mid_prices[product1][-1], sell_volume1)
         # TODO: Add logic for trading second product
 
     def trade_seasonal(self, state, result, product, peak_start, peak_end, trough_start, trough_end):
+        if product not in state.order_depths:
+            return
         if product not in result:
             result[product] = []
         position = state.position.get(product, 0)
@@ -149,6 +158,8 @@ class Round5:
             place_sell_order(product, result[product], mid_price, sell_volume)
 
     def trade_correlated(self, state, result, product, observation, change_threshold):
+        if product not in state.order_depths or observation not in state.observations:
+            return
         if product not in result:
             result[product] = []
         position = state.position.get(product, 0)
