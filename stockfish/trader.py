@@ -9,6 +9,7 @@ class Trader:
     Using stable, trending, pairs, seasonal, and correlated strategies to trade.
     """
     def __init__(self):
+        self.logger = Logger(local=True)
         self.position_limit = {
             PEARLS: 20,
             BANANAS: 20,
@@ -65,9 +66,18 @@ class Trader:
             DOLPHIN_SIGHTINGS,
             8
         )
-        # TODO: Add ETF strategy
+        self.trade_etf(
+            state,
+            result,
+            PICNIC_BASKET,
+            {
+                BAGUETTE: 2,
+                DIP: 4,
+                UKULELE: 1
+            }
+        )
 
-        logger.flush(state, result)
+        self.logger.flush(state, result)
         return result
 
     def trade_stable(self, state, result, product, ask_price, bid_price):
@@ -156,6 +166,23 @@ class Trader:
                 place_sell_order(product, result[product], mid_price, sell_volume)
         self.last_observation[observation] = observation_value
 
+    def trade_etf(self, state, result, etf, weights):
+        if etf not in state.order_depths or any(product not in state.order_depths for product in weights):
+            return
+        if etf not in result:
+            result[etf] = []
+        position = state.position.get(etf, 0)
+        buy_volume = self.position_limit.get(etf, 0) - position
+        sell_volume = self.position_limit.get(etf, 0) + position
+        mid_price = get_mid_price(state.order_depths[etf])
+        etf_value = 0
+        for product, weight in weights.items():
+            etf_value += weight * get_mid_price(state.order_depths[product])
+        if mid_price < etf_value - 400:
+            place_buy_order(etf, result[etf], mid_price, buy_volume)
+        if mid_price > etf_value + 400:
+            place_sell_order(etf, result[etf], mid_price, sell_volume)
+
 
 class Logger:
     local: bool
@@ -221,9 +248,6 @@ class Logger:
                 compressed.append([order.symbol, order.price, order.quantity])
 
         return compressed
-
-
-logger = Logger(local=True)
 
 
 def get_best_bid(order_depth):
@@ -411,6 +435,10 @@ def sell_signal(prices, window_size):
     return is_increasing(prices[-1 - window_size:-1]) and prices[-1] < prices[-2]
 
 
+"""
+Constants for product names
+"""
+
 PEARLS = "PEARLS"
 BANANAS = "BANANAS"
 COCONUTS = "COCONUTS"
@@ -422,3 +450,5 @@ BAGUETTE = "BAGUETTE"
 DIP = "DIP"
 UKULELE = "UKULELE"
 PICNIC_BASKET = "PICNIC_BASKET"
+
+

@@ -2,15 +2,7 @@
 Round 5
 """
 from typing import Dict, List
-from stockfish.datamodel import (
-    Order,
-    TradingState
-)
-from stockfish.utils import (
-    get_moving_average,
-    get_mid_price,
-    place_buy_order,
-    place_sell_order,
+from stockfish.constants import (
     PEARLS,
     BANANAS,
     COCONUTS,
@@ -23,6 +15,14 @@ from stockfish.utils import (
     UKULELE,
     PICNIC_BASKET
 )
+from stockfish.datamodel import Order, TradingState
+from stockfish.logger import Logger
+from stockfish.utils import (
+    get_moving_average,
+    get_mid_price,
+    place_buy_order,
+    place_sell_order
+)
 
 
 class Round5:
@@ -30,6 +30,7 @@ class Round5:
     Using stable, trending, pairs, seasonal, and correlated strategies to trade.
     """
     def __init__(self):
+        self.logger = Logger(local=True)
         self.position_limit = {
             PEARLS: 20,
             BANANAS: 20,
@@ -86,7 +87,16 @@ class Round5:
             DOLPHIN_SIGHTINGS,
             8
         )
-        # TODO: Add ETF strategy
+        self.trade_etf(
+            state,
+            result,
+            PICNIC_BASKET,
+            {
+                BAGUETTE: 2,
+                DIP: 4,
+                UKULELE: 1
+            }
+        )
 
         return result
 
@@ -175,3 +185,20 @@ class Round5:
             if change <= -change_threshold:
                 place_sell_order(product, result[product], mid_price, sell_volume)
         self.last_observation[observation] = observation_value
+
+    def trade_etf(self, state, result, etf, weights):
+        if etf not in state.order_depths or any(product not in state.order_depths for product in weights):
+            return
+        if etf not in result:
+            result[etf] = []
+        position = state.position.get(etf, 0)
+        buy_volume = self.position_limit.get(etf, 0) - position
+        sell_volume = self.position_limit.get(etf, 0) + position
+        mid_price = get_mid_price(state.order_depths[etf])
+        etf_value = 0
+        for product, weight in weights.items():
+            etf_value += weight * get_mid_price(state.order_depths[product])
+        if mid_price < etf_value - 400:
+            place_buy_order(etf, result[etf], mid_price, buy_volume)
+        if mid_price > etf_value + 400:
+            place_sell_order(etf, result[etf], mid_price, sell_volume)
