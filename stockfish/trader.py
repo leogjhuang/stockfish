@@ -2,27 +2,29 @@ import json
 import math
 import numpy as np
 from typing import Any, Dict, List
-from datamodel import Order, OrderDepth, ProsperityEncoder, Symbol, TradingState
+from datamodel import Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
 
 
 class Trader:
     """
-    Round 3 PnL: 15024 (Pearls: 1233, Bananas: 1213, Coconuts: 3972, Pina Coladas: 1727, Diving Gear: 4057, Berries: 2822)
-    Trading a stable, trending, correlated, lead-lag, and seasonal asset respectively.
+    Using stable, trending, correlated, lead-lag, seasonal, and ETF strategies to trade.
     """
     def __init__(self):
-        self.pearls = "PEARLS"
-        self.bananas = "BANANAS"
-        self.coconuts = "COCONUTS"
-        self.pina_coladas = "PINA_COLADAS"
-        self.diving_gear = "DIVING_GEAR"
-        self.berries = "BERRIES"
-        self.dolphin_sightings = "DOLPHIN_SIGHTINGS"
-
-        self.position_limit = {self.pearls: 20, self.bananas: 20, self.coconuts: 600, self.pina_coladas: 300, self.diving_gear: 50, self.berries: 250}
-        self.spread_coefficient = {self.pearls: 0.4, self.bananas: 0.35, self.berries: 0.3}
-        self.moving_average_window = {self.pearls: 5, self.bananas: 5, self.berries: 5, self.dolphin_sightings: 9}
-        self.trend_length = {self.coconuts: 9, self.pina_coladas: 7}
+        self.position_limit = {
+            PEARLS: 20,
+            BANANAS: 20,
+            COCONUTS: 600,
+            PINA_COLADAS: 300,
+            DIVING_GEAR: 50,
+            BERRIES: 250,
+            BAGUETTE: 150,
+            DIP: 300,
+            UKELELE: 70,
+            PICNIC_BASKET: 70
+        }
+        self.spread_coefficient = {PEARLS: 0.4, BANANAS: 0.35, BERRIES: 0.3}
+        self.moving_average_window = {PEARLS: 5, BANANAS: 5, BERRIES: 5, DOLPHIN_SIGHTINGS: 9}
+        self.trend_length = {COCONUTS: 9, PINA_COLADAS: 7}
         self.vwap_ask_prices = {}
         self.vwap_bid_prices = {}
         self.mid_prices = {}
@@ -35,8 +37,8 @@ class Trader:
         """
         result = {}
 
-        if self.dolphin_sightings in state.observations:
-            self.dolphin_sightings_list.append(state.observations[self.dolphin_sightings])
+        if DOLPHIN_SIGHTINGS in state.observations:
+            self.dolphin_sightings_list.append(state.observations[DOLPHIN_SIGHTINGS])
 
         if len(self.dolphin_sightings_list) > 1:
             self.dolphin_sightings_diff.append(self.dolphin_sightings_list[-1] - self.dolphin_sightings_list[-2])
@@ -63,27 +65,27 @@ class Trader:
             self.vwap_bid_prices[product].append(vwap_bid)
             self.mid_prices[product].append(mid_price)
 
-            if product == self.pearls:
+            if product == PEARLS:
                 if len(self.mid_prices[product]) > 0:
                     acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
                     spread = get_spread(order_depth) * self.spread_coefficient[product]
                     place_buy_order(product, orders, math.ceil(acceptable_price - spread), buy_volume)
                     place_sell_order(product, orders, math.floor(acceptable_price + spread), sell_volume)
 
-            if product == self.bananas:
+            if product == BANANAS:
                 if len(self.mid_prices[product]) > 0:
                     acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
                     spread = get_spread(order_depth) * self.spread_coefficient[product]
                     place_buy_order(product, orders, math.ceil(acceptable_price - spread), buy_volume)
                     place_sell_order(product, orders, math.floor(acceptable_price + spread), sell_volume)
 
-            if product == self.coconuts:
+            if product == COCONUTS:
                 if len(self.vwap_bid_prices[product]) > self.trend_length[product] and sell_signal(self.vwap_bid_prices[product], self.trend_length[product]):
                     place_sell_order(product, orders, best_bid, sell_volume)
                 if len(self.vwap_ask_prices[product]) > self.trend_length[product] and buy_signal(self.vwap_ask_prices[product], self.trend_length[product]):
                     place_buy_order(product, orders, best_ask, buy_volume)
 
-            if product == self.pina_coladas:
+            if product == PINA_COLADAS:
                 target_correlation = 1.8761
                 mid_price_coco = get_mid_price(state.order_depths["COCONUTS"])
                 actual_correlation = mid_price / mid_price_coco
@@ -92,7 +94,7 @@ class Trader:
                 if actual_correlation > target_correlation and len(self.mid_prices["COCONUTS"]) >= 2 and self.mid_prices["COCONUTS"][-1] > self.mid_prices["COCONUTS"][-2]:
                     place_sell_order(product, orders, best_bid, sell_volume)
 
-            if product == self.berries:
+            if product == BERRIES:
                 peak_start = 450000
                 trend_coefficient = 0.5
                 if state.timestamp <= peak_start:
@@ -108,8 +110,8 @@ class Trader:
                         place_buy_order(product, orders, math.ceil(acceptable_price - spread * (1 + trend_coefficient)), buy_volume)
                         place_sell_order(product, orders, math.floor(acceptable_price + spread * (1 - trend_coefficient)), sell_volume)
 
-            if product == self.diving_gear:
-                window = self.moving_average_window[self.dolphin_sightings]
+            if product == DIVING_GEAR:
+                window = self.moving_average_window[DOLPHIN_SIGHTINGS]
                 volatility_coefficient = 2.5
                 if len(self.dolphin_sightings_diff) >= window:
                     volatility = np.std(self.dolphin_sightings_diff[-window:])
@@ -127,22 +129,71 @@ class Trader:
 
 
 class Logger:
-    def __init__(self) -> None:
+    local: bool
+    local_logs: dict[int, str] = {}
+
+    def __init__(self, local=False) -> None:
         self.logs = ""
+        self.local = local
 
     def print(self, *objects: Any, sep: str = " ", end: str = "\n") -> None:
         self.logs += sep.join(map(str, objects)) + end
 
     def flush(self, state: TradingState, orders: dict[Symbol, list[Order]]) -> None:
-        print(json.dumps({
+        output = json.dumps({
             "state": state,
             "orders": orders,
             "logs": self.logs,
-        }, cls=ProsperityEncoder, separators=(",", ":"), sort_keys=True))
+        }, cls=ProsperityEncoder, separators=(",", ":"), sort_keys=True)
+        if self.local:
+            self.local_logs[state.timestamp] = output
+        print(output)
 
         self.logs = ""
 
-logger = Logger()
+    def compress_state(self, state: TradingState) -> dict[str, Any]:
+        listings = []
+        for listing in state.listings.values():
+            listings.append([listing["symbol"], listing["product"], listing["denomination"]])
+
+        order_depths = {}
+        for symbol, order_depth in state.order_depths.items():
+            order_depths[symbol] = [order_depth.buy_orders, order_depth.sell_orders]
+
+        return {
+            "t": state.timestamp,
+            "l": listings,
+            "od": order_depths,
+            "ot": self.compress_trades(state.own_trades),
+            "mt": self.compress_trades(state.market_trades),
+            "p": state.position,
+            "o": state.observations,
+        }
+
+    def compress_trades(self, trades: dict[Symbol, list[Trade]]) -> list[list[Any]]:
+        compressed = []
+        for arr in trades.values():
+            for trade in arr:
+                compressed.append([
+                    trade.symbol,
+                    trade.buyer,
+                    trade.seller,
+                    trade.price,
+                    trade.quantity,
+                    trade.timestamp,
+                ])
+
+        return compressed
+
+    def compress_orders(self, orders: dict[Symbol, list[Order]]) -> list[list[Any]]:
+        compressed = []
+        for arr in orders.values():
+            for order in arr:
+                compressed.append([order.symbol, order.price, order.quantity])
+
+        return compressed
+
+logger = Logger(local=True)
 
 
 def get_best_bid(order_depth):
@@ -291,6 +342,7 @@ def fill_buy_orders(product, orders, order_depth, limit, acceptable_ask_price):
             if limit <= 0:
                 return
 
+
 def is_increasing(lst):
     """
     Returns True if the list is increasing, False otherwise
@@ -299,6 +351,7 @@ def is_increasing(lst):
         if lst[i] < lst[i - 1]:
             return False
     return True
+
 
 def is_decreasing(lst):
     """
@@ -309,14 +362,29 @@ def is_decreasing(lst):
             return False
     return True
 
-def sell_signal(prices, window_size):
-    """
-    Returns True if the price has been increasing for the last window_size trades but is starting to decrease
-    """
-    return is_increasing(prices[-1 - window_size:-1]) and prices[-1] < prices[-2]
 
 def buy_signal(prices, window_size):
     """
     Returns True if the price has been decreasing for the last window_size trades but is starting to increase
     """
     return is_decreasing(prices[-1 - window_size:-1]) and prices[-1] > prices[-2]
+
+
+def sell_signal(prices, window_size):
+    """
+    Returns True if the price has been increasing for the last window_size trades but is starting to decrease
+    """
+    return is_increasing(prices[-1 - window_size:-1]) and prices[-1] < prices[-2]
+
+
+PEARLS = "PEARLS"
+BANANAS = "BANANAS"
+COCONUTS = "COCONUTS"
+PINA_COLADAS = "PINA_COLADAS"
+DIVING_GEAR = "DIVING_GEAR"
+BERRIES = "BERRIES"
+DOLPHIN_SIGHTINGS = "DOLPHIN_SIGHTINGS"
+BAGUETTE = "BAGUETTE"
+DIP = "DIP"
+UKELELE = "UKELELE"
+PICNIC_BASKET = "PICNIC_BASKET"

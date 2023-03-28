@@ -48,7 +48,8 @@ class Algo16:
             BAGUETTE: 150,
             DIP: 300,
             UKELELE: 70,
-            PICNIC_BASKET: 70}
+            PICNIC_BASKET: 70
+        }
         self.spread_coefficient = {PEARLS: 0.4, BANANAS: 0.35, BERRIES: 0.3}
         self.moving_average_window = {PEARLS: 5, BANANAS: 5, BERRIES: 5, DOLPHIN_SIGHTINGS: 9}
         self.trend_length = {COCONUTS: 9, PINA_COLADAS: 7}

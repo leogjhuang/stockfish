@@ -4,8 +4,8 @@ import datamodel
 
 
 def main():
-    traderBot = Trader()
-    traderBot.run(state)
+    trader = Trader()
+    simulate_alternative(3, 0, trader, False, 30000)
 
 if __name__ == "__main__":
     main()
