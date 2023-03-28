@@ -188,16 +188,3 @@ def sell_signal(prices, window_size):
     Returns True if the price has been increasing for the last window_size trades but is starting to decrease
     """
     return is_increasing(prices[-1 - window_size:-1]) and prices[-1] < prices[-2]
-
-
-PEARLS = "PEARLS"
-BANANAS = "BANANAS"
-COCONUTS = "COCONUTS"
-PINA_COLADAS = "PINA_COLADAS"
-DIVING_GEAR = "DIVING_GEAR"
-BERRIES = "BERRIES"
-DOLPHIN_SIGHTINGS = "DOLPHIN_SIGHTINGS"
-BAGUETTE = "BAGUETTE"
-DIP = "DIP"
-UKULELE = "UKULELE"
-PICNIC_BASKET = "PICNIC_BASKET"

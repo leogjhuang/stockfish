@@ -58,6 +58,13 @@ def getUtilFunctions():
     lines = readLines(utilsFile)
     while len(lines) > 0 and not isPythonFunction(lines[0]):
         lines.pop(0)
+    lines.append('\n\n')
+    return lines
+
+def getConstants():
+    constantsFile = './constants.py'
+    lines = readLines(constantsFile)
+    lines.append('\n\n')
     return lines
 
 def isPythonFunction(line):
@@ -67,10 +74,10 @@ def getSpaces(count):
     return '' if count <= 0 else ' ' + getSpaces(count - 1)
 
 def modifyDestFile(linesToAdd, destFile):
-    loggerFlushLine = getSpaces(8) + 'logger.flush(state, result)\n'
+    loggerFlushLine = getSpaces(8) + 'self.logger.flush(state, result)\n'
     lines = readLines(destFile)
     renameClassToTrader(linesToAdd)
-    lines += linesToAdd + getLoggerClass() + getUtilFunctions()
+    lines += linesToAdd + getLoggerClass() + getUtilFunctions() + getConstants()
     lines.insert(getRunReturnStatementIndex(lines), loggerFlushLine)
     write(lines, destFile)
 

@@ -67,6 +67,3 @@ class Logger:
                 compressed.append([order.symbol, order.price, order.quantity])
 
         return compressed
-
-
-logger = Logger(local=True)
