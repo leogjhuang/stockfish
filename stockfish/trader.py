@@ -1,6 +1,5 @@
 import json
 import math
-import numpy as np
 from typing import Any, Dict, List
 from datamodel import Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
 
@@ -19,17 +18,11 @@ class Trader:
             BERRIES: 250,
             BAGUETTE: 150,
             DIP: 300,
-            UKELELE: 70,
+            UKULELE: 70,
             PICNIC_BASKET: 70
         }
-        self.spread_coefficient = {PEARLS: 0.4, BANANAS: 0.35, BERRIES: 0.3}
-        self.moving_average_window = {PEARLS: 5, BANANAS: 5, BERRIES: 5, DOLPHIN_SIGHTINGS: 9}
-        self.trend_length = {COCONUTS: 9, PINA_COLADAS: 7}
-        self.vwap_ask_prices = {}
-        self.vwap_bid_prices = {}
         self.mid_prices = {}
-        self.dolphin_sightings_list = []
-        self.dolphin_sightings_diff = []
+        self.observations = {}
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         """"
@@ -37,11 +30,10 @@ class Trader:
         """
         result = {}
 
-        if DOLPHIN_SIGHTINGS in state.observations:
-            self.dolphin_sightings_list.append(state.observations[DOLPHIN_SIGHTINGS])
-
-        if len(self.dolphin_sightings_list) > 1:
-            self.dolphin_sightings_diff.append(self.dolphin_sightings_list[-1] - self.dolphin_sightings_list[-2])
+        for product in state.observations:
+            if product not in self.observations:
+                self.observations[product] = []
+            self.observations[product].append(state.observations[product])
 
         for product, order_depth in sorted(state.order_depths.items()):
             orders: list[Order] = []
@@ -51,76 +43,44 @@ class Trader:
             sell_volume = self.position_limit.get(product, 0) + position
             best_ask, _ = get_best_ask(order_depth)
             best_bid, _ = get_best_bid(order_depth)
-            vwap_ask = get_vwap_ask(order_depth)
-            vwap_bid = get_vwap_bid(order_depth)
             mid_price = get_mid_price(order_depth)
 
-            if product not in self.vwap_ask_prices:
-                self.vwap_ask_prices[product] = []
-            if product not in self.vwap_bid_prices:
-                self.vwap_bid_prices[product] = []
             if product not in self.mid_prices:
                 self.mid_prices[product] = []
-            self.vwap_ask_prices[product].append(vwap_ask)
-            self.vwap_bid_prices[product].append(vwap_bid)
             self.mid_prices[product].append(mid_price)
 
             if product == PEARLS:
-                if len(self.mid_prices[product]) > 0:
-                    acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
-                    spread = get_spread(order_depth) * self.spread_coefficient[product]
-                    place_buy_order(product, orders, math.ceil(acceptable_price - spread), buy_volume)
-                    place_sell_order(product, orders, math.floor(acceptable_price + spread), sell_volume)
+                place_buy_order(product, orders, 9999, buy_volume)
+                place_sell_order(product, orders, 10001, sell_volume)
 
             if product == BANANAS:
-                if len(self.mid_prices[product]) > 0:
-                    acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
-                    spread = get_spread(order_depth) * self.spread_coefficient[product]
-                    place_buy_order(product, orders, math.ceil(acceptable_price - spread), buy_volume)
-                    place_sell_order(product, orders, math.floor(acceptable_price + spread), sell_volume)
-
-            if product == COCONUTS:
-                if len(self.vwap_bid_prices[product]) > self.trend_length[product] and sell_signal(self.vwap_bid_prices[product], self.trend_length[product]):
-                    place_sell_order(product, orders, best_bid, sell_volume)
-                if len(self.vwap_ask_prices[product]) > self.trend_length[product] and buy_signal(self.vwap_ask_prices[product], self.trend_length[product]):
-                    place_buy_order(product, orders, best_ask, buy_volume)
+                acceptable_price = get_moving_average(self.mid_prices[product], 3)
+                place_buy_order(product, orders, acceptable_price - 1, buy_volume)
+                place_sell_order(product, orders, acceptable_price + 1, sell_volume)
 
             if product == PINA_COLADAS:
-                target_correlation = 1.8761
-                mid_price_coco = get_mid_price(state.order_depths["COCONUTS"])
-                actual_correlation = mid_price / mid_price_coco
-                if actual_correlation < target_correlation and len(self.mid_prices["COCONUTS"]) >= 2 and self.mid_prices["COCONUTS"][-1] < self.mid_prices["COCONUTS"][-2]:
-                    place_buy_order(product, orders, best_ask, buy_volume)
-                if actual_correlation > target_correlation and len(self.mid_prices["COCONUTS"]) >= 2 and self.mid_prices["COCONUTS"][-1] > self.mid_prices["COCONUTS"][-2]:
-                    place_sell_order(product, orders, best_bid, sell_volume)
+                expected_correlation = 1.878
+                if len(self.mid_prices[COCONUTS]) > 1:
+                    actual_correlation = mid_price / self.mid_prices[COCONUTS][-1]
+                    if actual_correlation < expected_correlation and self.mid_prices[COCONUTS][-1] < self.mid_prices[COCONUTS][-2]:
+                        place_buy_order(product, orders, mid_price, buy_volume)
+                    if actual_correlation > expected_correlation and self.mid_prices[COCONUTS][-1] > self.mid_prices[COCONUTS][-2]:
+                        place_sell_order(product, orders, mid_price, sell_volume)
 
             if product == BERRIES:
-                peak_start = 450000
-                trend_coefficient = 0.5
-                if state.timestamp <= peak_start:
-                    if len(self.mid_prices[product]) > 0:
-                        acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
-                        spread = get_spread(order_depth) * self.spread_coefficient[product]
-                        place_buy_order(product, orders, math.ceil(acceptable_price - spread * (1 - trend_coefficient)), buy_volume)
-                        place_sell_order(product, orders, math.floor(acceptable_price + spread * (1 + trend_coefficient)), sell_volume)
-                else:
-                    if len(self.mid_prices[product]) > 0:
-                        acceptable_price = get_moving_average(self.mid_prices[product], self.moving_average_window[product])
-                        spread = get_spread(order_depth) * self.spread_coefficient[product]
-                        place_buy_order(product, orders, math.ceil(acceptable_price - spread * (1 + trend_coefficient)), buy_volume)
-                        place_sell_order(product, orders, math.floor(acceptable_price + spread * (1 - trend_coefficient)), sell_volume)
+                if position != self.position_limit[product] and state.timestamp >= 123000 and state.timestamp <= 200000:
+                    place_buy_order(product, orders, best_ask, buy_volume)
+                if position != -self.position_limit[product] and state.timestamp >= 498000:
+                    place_sell_order(product, orders, best_bid, sell_volume)
 
             if product == DIVING_GEAR:
-                window = self.moving_average_window[DOLPHIN_SIGHTINGS]
-                volatility_coefficient = 2.5
-                if len(self.dolphin_sightings_diff) >= window:
-                    volatility = np.std(self.dolphin_sightings_diff[-window:])
-                    upper_bound = np.mean(self.dolphin_sightings_diff[-window:]) + volatility * volatility_coefficient
-                    lower_bound = np.mean(self.dolphin_sightings_diff[-window:]) - volatility * volatility_coefficient
-                    if self.dolphin_sightings_diff[-1] > upper_bound:
-                        place_sell_order(product, orders, best_bid, sell_volume)
-                    elif self.dolphin_sightings_diff[-1] < lower_bound:
+                change_threshold = 8
+                if len(self.observations[DOLPHIN_SIGHTINGS]) > 1:
+                    change = self.observations[DOLPHIN_SIGHTINGS][-1] - self.observations[DOLPHIN_SIGHTINGS][-2]
+                    if change >= change_threshold:
                         place_buy_order(product, orders, best_ask, buy_volume)
+                    if change <= -change_threshold:
+                        place_sell_order(product, orders, best_bid, sell_volume)
 
             result[product] = orders
 
@@ -192,6 +152,7 @@ class Logger:
                 compressed.append([order.symbol, order.price, order.quantity])
 
         return compressed
+
 
 logger = Logger(local=True)
 
@@ -386,5 +347,5 @@ BERRIES = "BERRIES"
 DOLPHIN_SIGHTINGS = "DOLPHIN_SIGHTINGS"
 BAGUETTE = "BAGUETTE"
 DIP = "DIP"
-UKELELE = "UKELELE"
+UKULELE = "UKULELE"
 PICNIC_BASKET = "PICNIC_BASKET"

@@ -68,4 +68,5 @@ class Logger:
 
         return compressed
 
+
 logger = Logger(local=True)
