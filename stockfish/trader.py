@@ -74,7 +74,9 @@ class Trader:
                 BAGUETTE: 2,
                 DIP: 4,
                 UKULELE: 1
-            }
+            },
+            325,
+            100
         )
 
         self.logger.flush(state, result)
@@ -166,7 +168,7 @@ class Trader:
                 place_sell_order(product, result[product], mid_price, sell_volume)
         self.last_observation[observation] = observation_value
 
-    def trade_etf(self, state, result, etf, weights):
+    def trade_etf(self, state, result, etf, weights, difference, threshold):
         if etf not in state.order_depths or any(product not in state.order_depths for product in weights):
             return
         if etf not in result:
@@ -175,12 +177,12 @@ class Trader:
         buy_volume = self.position_limit.get(etf, 0) - position
         sell_volume = self.position_limit.get(etf, 0) + position
         mid_price = get_mid_price(state.order_depths[etf])
-        etf_value = 0
+        etf_value = difference
         for product, weight in weights.items():
             etf_value += weight * get_mid_price(state.order_depths[product])
-        if mid_price < etf_value - 400:
+        if mid_price < etf_value - threshold:
             place_buy_order(etf, result[etf], mid_price, buy_volume)
-        if mid_price > etf_value + 400:
+        if mid_price > etf_value + threshold:
             place_sell_order(etf, result[etf], mid_price, sell_volume)
 
 
