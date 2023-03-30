@@ -1,10 +1,10 @@
-import sys
-
-'''
-Used to update trade.py with the path containing the trading algorithm followed by any helper files used:
+"""
+Used to update trade.py with the path containing the trading algorithm followed by any files used:
 Sample command to run on the command line if the algorithm is contained in ./algorithms/algo1.py:
 python3 bash.py ./algorithms/algo1.py
-'''
+"""
+import sys
+
 
 def main():
     # formatStateToJSON()
@@ -36,7 +36,7 @@ def filterSrcFile(srcFile):
 def getRunReturnStatementIndex(lines):
     seenRunFunction = False
     for i, line in enumerate(lines):
-        if 'run(self, state: TradingState)' in line:
+        if 'run(self, state)' in line:
             seenRunFunction = True
         if seenRunFunction and 'return result' in line:
             return i
@@ -95,7 +95,7 @@ def isClassDeclaration(line):
 
 def updateClassInstantiation(lines, className):
     for i in range(len(lines)):
-        if 'run(self, state: TradingState)' in lines[i]:
+        if 'run(self, state)' in lines[i]:
             nextLine = lines[i + 1]
             currentClassName = getClassNameFromInstance(nextLine)
             lines[i + 1] = lines[i + 1].replace(currentClassName, className, 1)

@@ -1,12 +1,14 @@
+"""
+Submitted file
+"""
 import json
-import math
-from typing import Any, Dict, List
-from datamodel import Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
+from typing import Any
+from datamodel import Order, ProsperityEncoder, Symbol, Trade, TradingState
 
 
 class Trader:
     """
-    Using stable, trending, pairs, seasonal, and correlated strategies to trade.
+    Using stable, trending, pairs, seasonal, correlated, and ETF strategies to trade.
     """
     def __init__(self):
         self.logger = Logger(local=True)
@@ -25,8 +27,10 @@ class Trader:
         self.mid_prices = {}
         self.last_observation = {}
 
-    def run(self, state: TradingState) -> Dict[str, List[Order]]:
+    def run(self, state):
         result = {}
+
+        self.check_counterparty_trades(state, result)
 
         self.trade_stable(
             state,
@@ -49,15 +53,14 @@ class Trader:
             1.875,
             0.001
         )
-        # TODO: Consider better time windows
         self.trade_seasonal(
             state,
             result,
             BERRIES,
             125000,
-            200000,
-            500000,
-            575000
+            150000,
+            525000,
+            550000
         )
         self.trade_correlated(
             state,
@@ -75,8 +78,8 @@ class Trader:
                 DIP: 4,
                 UKULELE: 1
             },
-            325,
-            100
+            400,
+            60
         )
 
         self.logger.flush(state, result)
@@ -101,14 +104,14 @@ class Trader:
         if product not in self.mid_prices:
             self.mid_prices[product] = []
         self.mid_prices[product].append(get_mid_price(state.order_depths[product]))
+        acceptable_price = get_moving_average(self.mid_prices[product], window)
         position = state.position.get(product, 0)
         buy_volume = self.position_limit.get(product, 0) - position
         sell_volume = self.position_limit.get(product, 0) + position
-        acceptable_price = get_moving_average(self.mid_prices[product], window)
         place_buy_order(product, result[product], acceptable_price - 1, buy_volume)
         place_sell_order(product, result[product], acceptable_price + 1, sell_volume)
 
-    def trade_pairs(self, state, result, product1, product2, correlation, tolerance):
+    def trade_pairs(self, state, result, product1, product2, correlation, threshold):
         if product1 not in state.order_depths or product2 not in state.order_depths:
             return
         if product1 not in result:
@@ -121,84 +124,87 @@ class Trader:
             self.mid_prices[product2] = []
         self.mid_prices[product1].append(get_mid_price(state.order_depths[product1]))
         self.mid_prices[product2].append(get_mid_price(state.order_depths[product2]))
-        position1 = state.position.get(product1, 0)
-        position2 = state.position.get(product2, 0)
-        buy_volume1 = self.position_limit.get(product1, 0) - position1
-        sell_volume1 = self.position_limit.get(product1, 0) + position1
-        buy_volume2 = self.position_limit.get(product2, 0) - position2
-        sell_volume2 = self.position_limit.get(product2, 0) + position2
-        actual_correlation = self.mid_prices[product1][-1] / self.mid_prices[product2][-1]
+        best_ask = get_best_ask(state.order_depths[product1])
+        best_bid = get_best_bid(state.order_depths[product1])
+        position = state.position.get(product1, 0)
+        buy_volume = self.position_limit.get(product1, 0) - position
+        sell_volume = self.position_limit.get(product1, 0) + position
+        difference = correlation - self.mid_prices[product1][-1] / self.mid_prices[product2][-1]
         if len(self.mid_prices[product2]) > 1:
-            if actual_correlation <= correlation - tolerance and self.mid_prices[product2][-1] < self.mid_prices[product2][-2]:
-                place_buy_order(product1, result[product1], self.mid_prices[product1][-1], buy_volume1)
-            if actual_correlation >= correlation + tolerance and self.mid_prices[product2][-1] > self.mid_prices[product2][-2]:
-                place_sell_order(product1, result[product1], self.mid_prices[product1][-1], sell_volume1)
-        # TODO: Add logic for trading second product
+            if difference > threshold and self.mid_prices[product2][-1] < self.mid_prices[product2][-2]:
+                place_buy_order(product1, result[product1], best_ask, buy_volume)
+            if difference < -threshold and self.mid_prices[product2][-1] > self.mid_prices[product2][-2]:
+                place_sell_order(product1, result[product1], best_bid, sell_volume)
 
-    def trade_seasonal(self, state, result, product, peak_start, peak_end, trough_start, trough_end):
+    def trade_seasonal(self, state, result, product, trough_start, trough_end, peak_start, peak_end):
         if product not in state.order_depths:
             return
         if product not in result:
             result[product] = []
+        best_ask = get_best_ask(state.order_depths[product])
+        best_bid = get_best_bid(state.order_depths[product])
         position = state.position.get(product, 0)
         buy_volume = self.position_limit.get(product, 0) - position
         sell_volume = self.position_limit.get(product, 0) + position
-        mid_price = get_mid_price(state.order_depths[product])
-        if buy_volume > 0 and state.timestamp >= peak_start and state.timestamp <= peak_end:
-            place_buy_order(product, result[product], mid_price, buy_volume)
-        if sell_volume > 0 and state.timestamp >= trough_start and state.timestamp <= trough_end:
-            place_sell_order(product, result[product], mid_price, sell_volume)
+        if buy_volume > 0 and state.timestamp >= trough_start and state.timestamp <= trough_end:
+            place_buy_order(product, result[product], best_ask, buy_volume)
+        if sell_volume > 0 and state.timestamp >= peak_start and state.timestamp <= peak_end:
+            place_sell_order(product, result[product], best_bid, sell_volume)
 
-    def trade_correlated(self, state, result, product, observation, change_threshold):
+    def trade_correlated(self, state, result, product, observation, threshold):
         if product not in state.order_depths or observation not in state.observations:
             return
         if product not in result:
             result[product] = []
+        best_ask = get_best_ask(state.order_depths[product])
+        best_bid = get_best_bid(state.order_depths[product])
         position = state.position.get(product, 0)
         buy_volume = self.position_limit.get(product, 0) - position
         sell_volume = self.position_limit.get(product, 0) + position
-        mid_price = get_mid_price(state.order_depths[product])
         observation_value = state.observations[observation]
         if observation in self.last_observation:
-            change = observation_value - self.last_observation[observation]
-            # TODO: Check if trading at mid price is able to fill position to limit
-            if change >= change_threshold:
-                place_buy_order(product, result[product], mid_price, buy_volume)
-            if change <= -change_threshold:
-                place_sell_order(product, result[product], mid_price, sell_volume)
+            difference = observation_value - self.last_observation[observation]
+            if difference > threshold:
+                place_buy_order(product, result[product], best_ask, buy_volume)
+            if difference < -threshold:
+                place_sell_order(product, result[product], best_bid, sell_volume)
         self.last_observation[observation] = observation_value
 
-    def trade_etf(self, state, result, etf, weights, difference, threshold):
+    def trade_etf(self, state, result, etf, weights, premium, threshold):
         if etf not in state.order_depths or any(product not in state.order_depths for product in weights):
             return
         if etf not in result:
             result[etf] = []
+        best_ask = get_best_ask(state.order_depths[etf])
+        best_bid = get_best_bid(state.order_depths[etf])
+        mid_price = get_mid_price(state.order_depths[etf])
         position = state.position.get(etf, 0)
         buy_volume = self.position_limit.get(etf, 0) - position
         sell_volume = self.position_limit.get(etf, 0) + position
-        mid_price = get_mid_price(state.order_depths[etf])
-        etf_value = difference
+        etf_value = premium
         for product, weight in weights.items():
             etf_value += weight * get_mid_price(state.order_depths[product])
-        if mid_price < etf_value - threshold:
-            place_buy_order(etf, result[etf], mid_price, buy_volume)
-            self.trade_etf_parts(state, result, weights, sell=True)
-        if mid_price > etf_value + threshold:
-            place_sell_order(etf, result[etf], mid_price, sell_volume)
-            self.trade_etf_parts(state, result, weights, sell=False)
-    
-    def trade_etf_parts(self, state, result, weights, sell):
-        for product, weight in weights.items():
-                if product not in result:
-                    result[product] = []
-                position = state.position.get(product, 0)
-                buy_volume = self.position_limit.get(product, 0) - position
-                sell_volume = self.position_limit.get(product, 0) + position
-                mid_price = get_mid_price(state.order_depths[product])
-                if sell:
-                    place_sell_order(product, result[product], mid_price, sell_volume)
-                else:
-                    place_buy_order(product, result[product], mid_price, buy_volume)
+        difference = etf_value - mid_price
+        if difference > threshold:
+            place_buy_order(etf, result[etf], best_ask, buy_volume)
+        if difference < -threshold:
+            place_sell_order(etf, result[etf], best_bid, sell_volume)
+
+    def check_counterparty_trades(self, state, result):
+        for product, trades in state.market_trades.items():
+            if product not in result:
+                result[product] = []
+            worst_ask = get_worst_ask(state.order_depths[product])
+            worst_bid = get_worst_bid(state.order_depths[product])
+            position = state.position.get(product, 0)
+            buy_volume = self.position_limit.get(product, 0) - position
+            sell_volume = self.position_limit.get(product, 0) + position
+            for trade in trades:
+                if trade.buyer == OLIVIA:
+                    place_buy_order(product, result[product], worst_ask + 1, buy_volume)
+                if trade.seller == OLIVIA:
+                    place_sell_order(product, result[product], worst_bid - 1, sell_volume)
+
 
 class Logger:
     local: bool
@@ -266,62 +272,41 @@ class Logger:
         return compressed
 
 
-def get_best_bid(order_depth):
-    """
-    Returns the best bid and its volume
-    """
-    if len(order_depth.buy_orders) == 0:
-        return None, None
-    best_bid = max(order_depth.buy_orders)
-    best_bid_volume = order_depth.buy_orders[best_bid]
-    return best_bid, best_bid_volume
-
-
 def get_best_ask(order_depth):
     """
-    Returns the best ask and its volume
+    Returns the best ask
     """
-    if len(order_depth.sell_orders) == 0:
-        return None, None
-    best_ask = min(order_depth.sell_orders)
-    best_ask_volume = order_depth.sell_orders[best_ask]
-    return best_ask, best_ask_volume
+    return min(order_depth.sell_orders)
 
 
-def get_spread(order_depth):
+def get_best_bid(order_depth):
     """
-    Returns the spread
+    Returns the best bid
     """
-    best_bid, _ = get_best_bid(order_depth)
-    best_ask, _ = get_best_ask(order_depth)
-    if best_bid is None or best_ask is None:
-        return None
-    return best_ask - best_bid
+    return max(order_depth.buy_orders)
+
+
+def get_worst_ask(order_depth):
+    """
+    Returns the worst ask
+    """
+    return max(order_depth.sell_orders)
+
+
+def get_worst_bid(order_depth):
+    """
+    Returns the worst bid
+    """
+    return min(order_depth.buy_orders)
 
 
 def get_mid_price(order_depth):
     """
     Returns the mid price
     """
-    best_bid, _ = get_best_bid(order_depth)
-    best_ask, _ = get_best_ask(order_depth)
-    if best_bid is None or best_ask is None:
-        return None
+    best_bid = get_best_bid(order_depth)
+    best_ask = get_best_ask(order_depth)
     return (best_bid + best_ask) / 2
-
-
-def get_average_price(trades):
-    """
-    Returns the average price of a list of trades
-    """
-    return sum(trade for trade in trades) / len(trades) if len(trades) != 0 else 0
-
-
-def get_average_market_trade_price(trades):
-    """
-    Returns the average price of a list of market trades
-    """
-    return sum(trade.price for trade in trades) / len(trades) if len(trades) != 0 else 0
 
 
 def get_moving_average(prices, window_size):
@@ -332,123 +317,18 @@ def get_moving_average(prices, window_size):
     return sum(price for price in prices[-window_size:]) / window_size
 
 
-def get_moving_std(trades, window_size):
-    """
-    Returns the moving standard deviation of the last window_size trades
-    """
-    window_size = min(len(trades), window_size)
-    mean = get_moving_average(trades, window_size)
-    return math.sqrt(sum((trade.price - mean) ** 2 for trade in trades[-window_size:]) / window_size)
-
-
-def get_vwap_bid(order_depth):
-    """
-    Returns the volume weighted average price of the buy orders
-    """
-    weighted_sum = 0
-    quantity_sum = 0
-    for price, quantity in order_depth.buy_orders.items():
-        weighted_sum += price * quantity
-        quantity_sum += quantity
-    return weighted_sum / quantity_sum if quantity_sum != 0 else 0
-
-
-def get_vwap_ask(order_depth):
-    """
-    Returns the volume weighted average price of the sell orders
-    """
-    weighted_sum = 0
-    quantity_sum = 0
-    for price, quantity in order_depth.sell_orders.items():
-        weighted_sum += price * quantity
-        quantity_sum += quantity
-    return weighted_sum / quantity_sum if quantity_sum != 0 else 0
-
-
 def place_buy_order(product, orders, price, quantity):
     """
     Places a buy order
     """
-    if quantity == 0:
-        return
-    quantity = abs(quantity)
-    orders.append(Order(product, price, quantity))
+    orders.append(Order(product, price, abs(quantity)))
 
 
 def place_sell_order(product, orders, price, quantity):
     """
     Places a sell order
     """
-    if quantity == 0:
-        return
-    quantity = abs(quantity)
-    orders.append(Order(product, price, -quantity))
-
-
-def fill_sell_orders(product, orders, order_depth, limit, acceptable_bid_price):
-    """
-    Fills sell orders up to a given limit and price
-    """
-    limit = abs(limit)
-    if len(order_depth.sell_orders) == 0:
-        return
-    for best_ask in range(min(order_depth.sell_orders), math.floor(acceptable_bid_price) + 1):
-        if best_ask in order_depth.sell_orders:
-            best_ask_volume = min(limit, -order_depth.sell_orders[best_ask])
-            place_buy_order(product, orders, best_ask, best_ask_volume)
-            limit -= best_ask_volume
-            if limit <= 0:
-                return
-
-
-def fill_buy_orders(product, orders, order_depth, limit, acceptable_ask_price):
-    """
-    Fills buy orders up to a given limit and price
-    """
-    limit = abs(limit)
-    if len(order_depth.buy_orders) == 0:
-        return
-    for best_bid in range(max(order_depth.buy_orders), math.ceil(acceptable_ask_price) - 1, -1):
-        if best_bid in order_depth.buy_orders:
-            best_bid_volume = min(limit, order_depth.buy_orders[best_bid])
-            place_sell_order(product, orders, best_bid, best_bid_volume)
-            limit -= best_bid_volume
-            if limit <= 0:
-                return
-
-
-def is_increasing(lst):
-    """
-    Returns True if the list is increasing, False otherwise
-    """
-    for i in range(1, len(lst)):
-        if lst[i] < lst[i - 1]:
-            return False
-    return True
-
-
-def is_decreasing(lst):
-    """
-    Returns True if the list is decreasing, False otherwise
-    """
-    for i in range(1, len(lst)):
-        if lst[i] > lst[i - 1]:
-            return False
-    return True
-
-
-def buy_signal(prices, window_size):
-    """
-    Returns True if the price has been decreasing for the last window_size trades but is starting to increase
-    """
-    return is_decreasing(prices[-1 - window_size:-1]) and prices[-1] > prices[-2]
-
-
-def sell_signal(prices, window_size):
-    """
-    Returns True if the price has been increasing for the last window_size trades but is starting to decrease
-    """
-    return is_increasing(prices[-1 - window_size:-1]) and prices[-1] < prices[-2]
+    orders.append(Order(product, price, -abs(quantity)))
 
 
 """
@@ -466,5 +346,6 @@ BAGUETTE = "BAGUETTE"
 DIP = "DIP"
 UKULELE = "UKULELE"
 PICNIC_BASKET = "PICNIC_BASKET"
+OLIVIA = "Olivia"
 
 

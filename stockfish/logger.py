@@ -1,6 +1,9 @@
+"""
+Logger class
+"""
 import json
-from datamodel import Order, ProsperityEncoder, Symbol, TradingState, Trade
 from typing import Any
+from datamodel import Order, ProsperityEncoder, Symbol, TradingState, Trade
 
 
 class Logger:

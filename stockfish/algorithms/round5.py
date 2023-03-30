@@ -1,7 +1,6 @@
 """
 Round 5
 """
-from typing import Dict, List
 from stockfish.constants import (
     PEARLS,
     BANANAS,
@@ -13,13 +12,17 @@ from stockfish.constants import (
     BAGUETTE,
     DIP,
     UKULELE,
-    PICNIC_BASKET
+    PICNIC_BASKET,
+    OLIVIA
 )
-from stockfish.datamodel import Order, TradingState
 from stockfish.logger import Logger
 from stockfish.utils import (
-    get_moving_average,
+    get_best_ask,
+    get_best_bid,
+    get_worst_ask,
+    get_worst_bid,
     get_mid_price,
+    get_moving_average,
     place_buy_order,
     place_sell_order
 )
@@ -27,7 +30,7 @@ from stockfish.utils import (
 
 class Round5:
     """
-    Using stable, trending, pairs, seasonal, and correlated strategies to trade.
+    Using stable, trending, pairs, seasonal, correlated, and ETF strategies to trade.
     """
     def __init__(self):
         self.logger = Logger(local=True)
@@ -46,8 +49,10 @@ class Round5:
         self.mid_prices = {}
         self.last_observation = {}
 
-    def run(self, state: TradingState) -> Dict[str, List[Order]]:
+    def run(self, state):
         result = {}
+
+        self.check_counterparty_trades(state, result)
 
         self.trade_stable(
             state,
@@ -70,15 +75,14 @@ class Round5:
             1.875,
             0.001
         )
-        # TODO: Consider better time windows
         self.trade_seasonal(
             state,
             result,
             BERRIES,
             125000,
-            200000,
-            500000,
-            575000
+            150000,
+            525000,
+            550000
         )
         self.trade_correlated(
             state,
@@ -96,8 +100,8 @@ class Round5:
                 DIP: 4,
                 UKULELE: 1
             },
-            325,
-            100
+            400,
+            60
         )
 
         return result
@@ -121,14 +125,14 @@ class Round5:
         if product not in self.mid_prices:
             self.mid_prices[product] = []
         self.mid_prices[product].append(get_mid_price(state.order_depths[product]))
+        acceptable_price = get_moving_average(self.mid_prices[product], window)
         position = state.position.get(product, 0)
         buy_volume = self.position_limit.get(product, 0) - position
         sell_volume = self.position_limit.get(product, 0) + position
-        acceptable_price = get_moving_average(self.mid_prices[product], window)
         place_buy_order(product, result[product], acceptable_price - 1, buy_volume)
         place_sell_order(product, result[product], acceptable_price + 1, sell_volume)
 
-    def trade_pairs(self, state, result, product1, product2, correlation, tolerance):
+    def trade_pairs(self, state, result, product1, product2, correlation, threshold):
         if product1 not in state.order_depths or product2 not in state.order_depths:
             return
         if product1 not in result:
@@ -141,81 +145,83 @@ class Round5:
             self.mid_prices[product2] = []
         self.mid_prices[product1].append(get_mid_price(state.order_depths[product1]))
         self.mid_prices[product2].append(get_mid_price(state.order_depths[product2]))
-        position1 = state.position.get(product1, 0)
-        position2 = state.position.get(product2, 0)
-        buy_volume1 = self.position_limit.get(product1, 0) - position1
-        sell_volume1 = self.position_limit.get(product1, 0) + position1
-        buy_volume2 = self.position_limit.get(product2, 0) - position2
-        sell_volume2 = self.position_limit.get(product2, 0) + position2
-        actual_correlation = self.mid_prices[product1][-1] / self.mid_prices[product2][-1]
+        best_ask = get_best_ask(state.order_depths[product1])
+        best_bid = get_best_bid(state.order_depths[product1])
+        position = state.position.get(product1, 0)
+        buy_volume = self.position_limit.get(product1, 0) - position
+        sell_volume = self.position_limit.get(product1, 0) + position
+        difference = correlation - self.mid_prices[product1][-1] / self.mid_prices[product2][-1]
         if len(self.mid_prices[product2]) > 1:
-            if actual_correlation <= correlation - tolerance and self.mid_prices[product2][-1] < self.mid_prices[product2][-2]:
-                place_buy_order(product1, result[product1], self.mid_prices[product1][-1], buy_volume1)
-            if actual_correlation >= correlation + tolerance and self.mid_prices[product2][-1] > self.mid_prices[product2][-2]:
-                place_sell_order(product1, result[product1], self.mid_prices[product1][-1], sell_volume1)
-        # TODO: Add logic for trading second product
+            if difference > threshold and self.mid_prices[product2][-1] < self.mid_prices[product2][-2]:
+                place_buy_order(product1, result[product1], best_ask, buy_volume)
+            if difference < -threshold and self.mid_prices[product2][-1] > self.mid_prices[product2][-2]:
+                place_sell_order(product1, result[product1], best_bid, sell_volume)
 
-    def trade_seasonal(self, state, result, product, peak_start, peak_end, trough_start, trough_end):
+    def trade_seasonal(self, state, result, product, trough_start, trough_end, peak_start, peak_end):
         if product not in state.order_depths:
             return
         if product not in result:
             result[product] = []
+        best_ask = get_best_ask(state.order_depths[product])
+        best_bid = get_best_bid(state.order_depths[product])
         position = state.position.get(product, 0)
         buy_volume = self.position_limit.get(product, 0) - position
         sell_volume = self.position_limit.get(product, 0) + position
-        mid_price = get_mid_price(state.order_depths[product])
-        if buy_volume > 0 and state.timestamp >= peak_start and state.timestamp <= peak_end:
-            place_buy_order(product, result[product], mid_price, buy_volume)
-        if sell_volume > 0 and state.timestamp >= trough_start and state.timestamp <= trough_end:
-            place_sell_order(product, result[product], mid_price, sell_volume)
+        if buy_volume > 0 and state.timestamp >= trough_start and state.timestamp <= trough_end:
+            place_buy_order(product, result[product], best_ask, buy_volume)
+        if sell_volume > 0 and state.timestamp >= peak_start and state.timestamp <= peak_end:
+            place_sell_order(product, result[product], best_bid, sell_volume)
 
-    def trade_correlated(self, state, result, product, observation, change_threshold):
+    def trade_correlated(self, state, result, product, observation, threshold):
         if product not in state.order_depths or observation not in state.observations:
             return
         if product not in result:
             result[product] = []
+        best_ask = get_best_ask(state.order_depths[product])
+        best_bid = get_best_bid(state.order_depths[product])
         position = state.position.get(product, 0)
         buy_volume = self.position_limit.get(product, 0) - position
         sell_volume = self.position_limit.get(product, 0) + position
-        mid_price = get_mid_price(state.order_depths[product])
         observation_value = state.observations[observation]
         if observation in self.last_observation:
-            change = observation_value - self.last_observation[observation]
-            # TODO: Check if trading at mid price is able to fill position to limit
-            if change >= change_threshold:
-                place_buy_order(product, result[product], mid_price, buy_volume)
-            if change <= -change_threshold:
-                place_sell_order(product, result[product], mid_price, sell_volume)
+            difference = observation_value - self.last_observation[observation]
+            if difference > threshold:
+                place_buy_order(product, result[product], best_ask, buy_volume)
+            if difference < -threshold:
+                place_sell_order(product, result[product], best_bid, sell_volume)
         self.last_observation[observation] = observation_value
 
-    def trade_etf(self, state, result, etf, weights, difference, threshold):
+    def trade_etf(self, state, result, etf, weights, premium, threshold):
         if etf not in state.order_depths or any(product not in state.order_depths for product in weights):
             return
         if etf not in result:
             result[etf] = []
+        best_ask = get_best_ask(state.order_depths[etf])
+        best_bid = get_best_bid(state.order_depths[etf])
+        mid_price = get_mid_price(state.order_depths[etf])
         position = state.position.get(etf, 0)
         buy_volume = self.position_limit.get(etf, 0) - position
         sell_volume = self.position_limit.get(etf, 0) + position
-        mid_price = get_mid_price(state.order_depths[etf])
-        etf_value = difference
+        etf_value = premium
         for product, weight in weights.items():
             etf_value += weight * get_mid_price(state.order_depths[product])
-        if mid_price < etf_value - threshold:
-            place_buy_order(etf, result[etf], mid_price, buy_volume)
-            self.trade_etf_parts(state, result, weights, sell=True)
-        if mid_price > etf_value + threshold:
-            place_sell_order(etf, result[etf], mid_price, sell_volume)
-            self.trade_etf_parts(state, result, weights, sell=False)
-    
-    def trade_etf_parts(self, state, result, weights, sell):
-        for product, weight in weights.items():
-                if product not in result:
-                    result[product] = []
-                position = state.position.get(product, 0)
-                buy_volume = self.position_limit.get(product, 0) - position
-                sell_volume = self.position_limit.get(product, 0) + position
-                mid_price = get_mid_price(state.order_depths[product])
-                if sell:
-                    place_sell_order(product, result[product], mid_price, sell_volume)
-                else:
-                    place_buy_order(product, result[product], mid_price, buy_volume)
+        difference = etf_value - mid_price
+        if difference > threshold:
+            place_buy_order(etf, result[etf], best_ask, buy_volume)
+        if difference < -threshold:
+            place_sell_order(etf, result[etf], best_bid, sell_volume)
+
+    def check_counterparty_trades(self, state, result):
+        for product, trades in state.market_trades.items():
+            if product not in result:
+                result[product] = []
+            worst_ask = get_worst_ask(state.order_depths[product])
+            worst_bid = get_worst_bid(state.order_depths[product])
+            position = state.position.get(product, 0)
+            buy_volume = self.position_limit.get(product, 0) - position
+            sell_volume = self.position_limit.get(product, 0) + position
+            for trade in trades:
+                if trade.buyer == OLIVIA:
+                    place_buy_order(product, result[product], worst_ask + 1, buy_volume)
+                if trade.seller == OLIVIA:
+                    place_sell_order(product, result[product], worst_bid - 1, sell_volume)
