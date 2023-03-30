@@ -182,9 +182,23 @@ class Trader:
             etf_value += weight * get_mid_price(state.order_depths[product])
         if mid_price < etf_value - threshold:
             place_buy_order(etf, result[etf], mid_price, buy_volume)
+            self.trade_etf_parts(state, result, weights, sell=True)
         if mid_price > etf_value + threshold:
             place_sell_order(etf, result[etf], mid_price, sell_volume)
-
+            self.trade_etf_parts(state, result, weights, sell=False)
+    
+    def trade_etf_parts(self, state, result, weights, sell):
+        for product, weight in weights.items():
+                if product not in result:
+                    result[product] = []
+                position = state.position.get(product, 0)
+                buy_volume = self.position_limit.get(product, 0) - position
+                sell_volume = self.position_limit.get(product, 0) + position
+                mid_price = get_mid_price(state.order_depths[product])
+                if sell:
+                    place_sell_order(product, result[product], mid_price, sell_volume)
+                else:
+                    place_buy_order(product, result[product], mid_price, buy_volume)
 
 class Logger:
     local: bool
