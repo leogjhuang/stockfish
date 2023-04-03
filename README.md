@@ -13,6 +13,10 @@ cd ./stockfish
 python3 -m venv venv (Set up the virtual environment)
 . venv/bin/activate  (Activate the virtual environment)
 pip3 install -r requirements.txt (Install the required packages)
+```
+### Running the backtester
+
+```sh
 python3 bash.py {algorithm_file} && python3 backtester.py {round_number} {day_number}
 ```
 
