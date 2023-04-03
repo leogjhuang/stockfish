@@ -18,6 +18,8 @@ pip3 install -r requirements.txt (Install the required packages)
 python3 bash.py {algorithm_file} && python3 backtester.py {round_number} {day_number}
 ```
 
+Example:
+
 ```sh
 python3 bash.py algorithms/round5.py && python3 backtester.py 4 3
 ```
